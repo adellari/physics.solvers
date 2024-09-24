@@ -17,8 +17,8 @@ class Fluid
     
     init(device: MTLDevice)
     {
-        let velocityDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 500, height: 500, mipmapped: false)
-        let compositeDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 500, height: 500, mipmapped: false)
+        let velocityDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
+        let compositeDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
         
         velocityDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
         compositeDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
