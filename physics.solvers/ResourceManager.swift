@@ -10,22 +10,53 @@ import Metal
 
 class Fluid 
 {
-    var velocity : MTLTexture? // in : rg, out: ba
+    var velocityIn : MTLTexture? // in : rg, out: ba
+    var velocityOut : MTLTexture?
     var compositeIn : MTLTexture?
     var compositeOut : MTLTexture?
     //pressure, temperature, density, divergence
     
     init(device: MTLDevice)
     {
-        let velocityDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
-        let compositeDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
+        let velocityRDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
+        let velocityWDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
+        let compositeRDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
+        let compositeWDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
         
-        velocityDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        compositeDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        velocityRDesc.usage = MTLTextureUsage([.shaderRead])
+        velocityWDesc.usage = MTLTextureUsage([.shaderWrite])
+        compositeRDesc.usage = MTLTextureUsage([.shaderRead])
+        compositeWDesc.usage = MTLTextureUsage([.shaderWrite])
         
-        self.velocity = device.makeTexture(descriptor: velocityDesc)
-        self.compositeIn = device.makeTexture(descriptor: compositeDesc)
-        self.compositeOut = device.makeTexture(descriptor: compositeDesc)
+        self.velocityIn = device.makeTexture(descriptor: velocityRDesc)
+        self.velocityOut = device.makeTexture(descriptor: velocityWDesc)
+        self.compositeIn = device.makeTexture(descriptor: compositeRDesc)
+        self.compositeOut = device.makeTexture(descriptor: compositeWDesc)
+    }
+    
+    func Blit(source : MTLTexture, usage: MTLTextureUsage = [.shaderRead] ) throws -> MTLTexture {
+        let device = source.device
+        
+        var descriptor = MTLTextureDescriptor()
+        descriptor.width = source.width
+        descriptor.height = source.height
+        descriptor.pixelFormat = source.pixelFormat
+        descriptor.usage = usage
+        
+        let destination = device.makeTexture(descriptor: descriptor)
+        
+        let commandQueue = device.makeCommandQueue()
+        let commandBuffer = commandQueue?.makeCommandBuffer()
+    
+        
+        let blitEncoder = commandBuffer?.makeBlitCommandEncoder()
+        blitEncoder?.copy(from: source, to: destination!)
+        blitEncoder?.endEncoding()
+        
+        commandBuffer?.commit()
+        commandBuffer?.waitUntilCompleted()
+        
+        return destination!
     }
 }
 
@@ -51,4 +82,6 @@ class ResourceManager
         self.commandQueue = device!.makeCommandQueue()
         self.device = _device
     }
+    
+    
 }
