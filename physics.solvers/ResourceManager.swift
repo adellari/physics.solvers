@@ -10,6 +10,20 @@ import Metal
 
 class Fluid 
 {
+    struct advectionParams{
+        var uDissipation: Float
+        var tDissipation: Float
+        var dDissipation: Float
+    }
+    
+    struct impulseParams{
+        var origin: SIMD2<Float>
+        var radius: Float
+        var iTemperature: Float
+        var iDensity: Float
+        var iAuxillary: Float
+    }
+    
     var velocityIn : MTLTexture? // in : rg, out: ba
     var velocityOut : MTLTexture?
     var compositeIn : MTLTexture?

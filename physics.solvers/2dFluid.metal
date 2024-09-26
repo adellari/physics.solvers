@@ -16,6 +16,20 @@ using namespace metal;
 
 constexpr sampler textureSampler(filter::linear, address::repeat);
 
+struct AdvectionParams{
+    float uDissipation; //velocity
+    float tDissipation; //temperature
+    float dDissipation; //density
+};
+
+struct ImpulseParams{
+    float2 origin;
+    float radius;
+    float iTemperature;
+    float iDensity;
+    float iAuxillary;
+};
+
 //textures needed
 /*
  velocity(float2)
@@ -55,6 +69,8 @@ float2 BilinearSample(texture2d<float, access::read_write> tex, uint2 pix)
     float2 texSize = float2(tex.get_width(), tex.get_height());
     uint2 TLCoord = clamp(pix, uint2(0), uint2(texSize) - 1);
     uint2 BRCoord = clamp(pix, uint2(0), uint2(texSize) - 1);
+    
+    return float2();
 }
 
 float2 BilinAdvection(texture2d<float, access::read_write> tex, uint2 pix, float2 uv)
@@ -110,9 +126,9 @@ float4x4 gather(device texture2d<float, access::sample>* tex, float2 uv, float2 
 
 //velocity: rg (old) | ba (new)
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::sample> compositeIn [[texture(2)]], texture2d<float, access::write> compositeOut [[texture(3)]] , constant float& dissipation [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::sample> compositeIn [[texture(2)]], texture2d<float, access::write> compositeOut [[texture(3)]] , constant AdvectionParams& params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
-    const ushort2 textureSize = ushort2(512, 512);
+    const ushort2 textureSize = ushort2(velocityIn.get_width(), velocityIn.get_height());
     const float2 texelSize = float2(1.f / textureSize.x, 1.f / textureSize.y);
     
     //velocity advection
@@ -122,28 +138,50 @@ kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]]
     float2 newUv = uv - (cVelocity * timestep * texelSize);
     float2 nVelocity = velocityIn.sample(textureSampler, newUv).rg;
     
-    velocityOut.write(float4(nVelocity, 0.f, 0.f) * dissipation, position);
     
     //float2 nVelocity = velocity.read(newUv).ba * dissipation;
     
     float4 compositeC = compositeIn.sample(textureSampler, newUv);
-    float nTemperature = compositeC.g * dissipation;
-    float nDensity = compositeC.b * dissipation;
+    float nTemperature = compositeC.g * params.tDissipation;
+    float nDensity = compositeC.b * params.dDissipation;
     
     compositeOut.write(float4(compositeC.r, nTemperature, nDensity, compositeC.a), position);
     
     //Apply Buoyancy in the y direction
     nVelocity += (timestep * (nTemperature * _Sigma - nDensity * _Kappa)) * float2(0.f, 1.f);
     
+    velocityOut.write(float4(nVelocity, 0.f, 0.f) * params.uDissipation, position);
     //output.write(composite, uv);
 }
+
+//          [Need to Blit velocity AND composite here] before Impulse
+
 
 //impulse (back force from advection) temperature
 //impulse density
 
-kernel void Impulse(texture2d<float, access::read_write> input [[texture(0)]], texture2d<float, access::read_write> output [[texture(1)]], uint2 position [[thread_position_in_grid]])
+kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::read_write> compositeOut [[texture(1)]], constant ImpulseParams& params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
+    float2 textureSize = float2(compositeIn.get_width(), compositeOut.get_height());
+    float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
+    float d = distance(uv, params.origin);
+    float impulse = 0.f;
+    
+    if (d < params.radius)
+    {
+        float a = (params.radius - d) * 0.5f;   //
+        impulse = min(a, 1.f);
+    }
+    
+    float4 comp = compositeIn.sample(textureSampler, uv);
+    float temp = comp.g;
+    float dens = comp.b;
+    
+    temp = max(0.f, mix(temp, params.iTemperature, impulse));
+    dens = max(0.f, mix(dens, params.iDensity, impulse));
+    
+    compositeOut.write(float4(comp.r, temp, dens, comp.a), position);
 }
 
 //calculate divergence of velocity
