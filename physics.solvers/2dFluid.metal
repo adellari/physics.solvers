@@ -30,6 +30,11 @@ struct ImpulseParams{
     float iAuxillary;
 };
 
+struct JacobiParams{
+    float Alpha;
+    float InvBeta;
+};
+
 //textures needed
 /*
  velocity(float2)
@@ -160,17 +165,17 @@ kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]]
 //impulse (back force from advection) temperature
 //impulse density
 
-kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::read_write> compositeOut [[texture(1)]], constant ImpulseParams& params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::write> compositeOut [[texture(1)]], constant ImpulseParams* params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
     float2 textureSize = float2(compositeIn.get_width(), compositeOut.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(uv, params.origin);
+    float d = distance(uv, params->origin);
     float impulse = 0.f;
     
-    if (d < params.radius)
+    if (d < params->radius)
     {
-        float a = (params.radius - d) * 0.5f;   //
+        float a = (params->radius - d) * 0.5f;   //
         impulse = min(a, 1.f);
     }
     
@@ -178,17 +183,63 @@ kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]],
     float temp = comp.g;
     float dens = comp.b;
     
-    temp = max(0.f, mix(temp, params.iTemperature, impulse));
-    dens = max(0.f, mix(dens, params.iDensity, impulse));
+    temp = max(0.f, mix(temp, params->iTemperature, impulse));
+    dens = max(0.f, mix(dens, params->iDensity, impulse));
     
     compositeOut.write(float4(comp.r, temp, dens, comp.a), position);
 }
 
 //calculate divergence of velocity
+kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]], texture2d<float, access::sample> compositeIn [[texture(1)]], texture2d<float, access::write> compositeOut [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+{
+    float2 textureSize = float2(velocity.get_width(), velocity.get_height());
+    float2 texelSize = 1.f/textureSize;
+    
+    float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
+    float4 composite = compositeIn.sample(textureSampler, uv);
+    
+    float2 uN = velocity.sample(textureSampler, float2(uv + float2(0, -texelSize.y))).rg;
+    float2 uS = velocity.sample(textureSampler, float2(uv + float2(0, texelSize.y))).rg;
+    float2 uE = velocity.sample(textureSampler, float2(uv + float2(texelSize.x , 0))).rg;
+    float2 uW = velocity.sample(textureSampler, float2(uv + float2(-texelSize.x , 0))).rg;
+    
+    float divergence = (uN.y - uS.y + uE.x - uW.x) * 0.5 / 1.f; //multiply by the inverse cell size
+    compositeOut.write(float4(composite.rgb, divergence), position);
+    
+}
 
 //jacobi iterations
-kernel void Jacobi(texture2d<float, access::read_write> velocity [[texture(0)]], texture2d<float, access::read_write> output [[texture(1)]], uint2 position [[thread_position_in_grid]])
+kernel void Jacobi(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::write> compositeOut [[texture(1)]], constant JacobiParams* jacobiParams [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
+    //high level ( we're solving for a pressure field that satisfies the Pressure Poisson Eqation ∇²P(x) = 0 )
+    //to this effect we start with initializing p to 0
+    //we use Equation 16 (GPU Gems) to which accounts for the divergence of our current field
+    //use the pressure as our new P(x) field
+    //continue for ITER num of jacobian steps
+    //getting closer to convergence
+    
+    //runs ITER number of times
+    //sample the pressure texture, perform calcualtions on this value
+    //use the divergence in calculation
+    //write to the pressure texture
+    
+    float2 textureSize = float2(compositeIn.get_width(), compositeIn.get_height());
+    float2 texelSize = 1.f / textureSize;
+    float alpha = jacobiParams->Alpha;
+    float invB = jacobiParams->InvBeta;
+    
+    float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
+    
+    float4 compositeRead = compositeIn.sample(textureSampler, uv);
+    float div = compositeRead.a;
+    
+    float pN = compositeIn.sample(textureSampler, uv + float2(0, -texelSize.y)).r;
+    float pS = compositeIn.sample(textureSampler, uv + float2(0, texelSize.y)).r;
+    float pE = compositeIn.sample(textureSampler, uv + float2(texelSize.x, 0)).r;
+    float pW = compositeIn.sample(textureSampler, uv + float2(-texelSize.x, 0)).r;
+    
+    float prime = (pN + pS + pE + pW * alpha * div) * invB;
+    compositeOut.write(float4(prime, compositeRead.gba), position);
     
 }
 
