@@ -81,7 +81,7 @@ class Fluid
         
         self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.99, dDissipation: 0.9999)
         self.impulseParams = ImpulseParams(origin: SIMD2<Float>(0.5, 0), radius: 0.1, iTemperature: 10, iDensity: 1, iAuxillary: 0)
-        self.jacobiParams = JacobiParams(Alpha: -1, InvBeta: 0.25)
+        self.jacobiParams = JacobiParams(Alpha: -1.0, InvBeta: 0.25)
         
     }
     
@@ -166,6 +166,7 @@ class ResourceManager : NSObject
         
         encoder1.setComputePipelineState(self.advectionPipeline)
         encoder1.setTexture(fluid.velocityIn!, index: 0)
+        encoder1.setTexture(fluid.velocityIn!, index: 4)
         encoder1.setTexture(fluid.velocityOut!, index: 1)
         encoder1.setTexture(fluid.tempDensityIn, index: 2)
         encoder1.setTexture(fluid.tempDensityOut, index: 3)
