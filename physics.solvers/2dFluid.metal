@@ -11,7 +11,7 @@ using namespace metal;
 #define td 0.01f                //1 / 2000 pixels (texel delta)
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
-#define _Sigma -1.f               //smoke buoyancy
+#define _Sigma 1.0f               //smoke buoyancy
 #define _Kappa 0.05f            //smoke weight
 
 constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
@@ -44,122 +44,46 @@ struct JacobiParams{
  divergence(float)
  */
 
-//read the current texture's velocity (u) at pixel `position`
-//convert (u) into a heading
-//read at `position` - `heading` = uDelta
-//uDelta = u * timestep
-
-float2 Sample(texture2d<float, access::read_write> tex, uint2 pix, float2 u)
-{
-    float4 val = float4();
-    uint2 dim = uint2(tex.get_width(), tex.get_height());
-    uint2 signs = uint2(sign(u));       //get the sign of the velocity components
-    
-    float2 nu = normalize(u);           //get the direction of the velocity vector
-    
-    uint2 ru = uint2(ceil(abs(nu)));    //ceil the absolute value of the velocity
-    ru = signs * ru;                    //re-apply velocity signs
-    
-    uint2 pixSample = pix - ru;
-    
-    float2 uDelta = tex.read(pixSample).rg;   //we have our new vector
-    
-    //interpolate our new vector
-    uDelta = u *  (1 - length(u)) + (uDelta * length(u));
-    return uDelta;
-}
-
-float2 BilinearSample(texture2d<float, access::read_write> tex, uint2 pix)
-{
-    float2 texSize = float2(tex.get_width(), tex.get_height());
-    uint2 TLCoord = clamp(pix, uint2(0), uint2(texSize) - 1);
-    uint2 BRCoord = clamp(pix, uint2(0), uint2(texSize) - 1);
-    
-    return float2();
-}
-
-float2 BilinAdvection(texture2d<float, access::read_write> tex, uint2 pix, float2 uv)
-{
-    float2 texSize = float2(tex.get_width(), tex.get_height());
-    float2 texCoord = (float2(pix) - uv - 0.5) / texSize;
-    
-    uint2 pixLow = uint2(floor(texCoord * texSize - 0.5));
-    uint2 pixHigh = pixLow + 1;
-    
-    pixLow = clamp(pixLow, uint2(0), uint2(texSize) - 1);
-    pixHigh = clamp(pixHigh, uint2(0), uint2(texSize) - 1);
-    
-    float2 t = fract(texCoord * texSize + 0.5);
-    
-    float2 LL = tex.read(pixLow).rg;
-    float2 LR = tex.read(uint2(pixHigh.x, pixLow.y)).rg;
-    float2 UL = tex.read(uint2(pixLow.x, pixHigh.y)).rg;
-    float2 UR = tex.read(pixHigh).rg;
-    
-    float2 LowerSample = mix(LL, LR, t.x);
-    float2 UpperSample = mix(UL, UR, t.x);
-    
-    return mix(LowerSample, UpperSample, t.y);
-
-}
-
-float4 gatherX(device texture2d<float, access::sample>* tex, float2 uv)
-{
-    float4 left = tex->sample(textureSampler, float2(uv.x - td, uv.y));
-    float4 right = tex->sample(textureSampler, float2(uv.x + td, uv.y));
-    
-    float4 up = tex->sample(textureSampler, float2(uv.x, uv.y + td));
-    float4 down = tex->sample(textureSampler, float2(uv.x, uv.y - td));
-    
-    return float4(left.x, right.x, up.x, down.x);
-}
-
-float4x4 gather(device texture2d<float, access::sample>* tex, float2 uv, float2 ts)
-{
-    float4 left = tex->sample(textureSampler, float2(uv.x - ts.x, uv.y));
-    float4 right = tex->sample(textureSampler, float2(uv.x + ts.x, uv.y));
-    
-    float4 up = tex->sample(textureSampler, float2(uv.x, uv.y + ts.y));
-    float4 down = tex->sample(textureSampler, float2(uv.x, uv.y - ts.y));
-    
-    return float4x4(left, right, up, down);
-}
-
 //advect velocity to velocity
 //advect temperature to velocity
 //advect dnesity to velocity
 
 //velocity: rg (old) | ba (new)
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::sample> compositeIn [[texture(2)]], texture2d<float, access::write> compositeOut [[texture(3)]] , constant AdvectionParams* params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::sample> tempDensityIn [[texture(2)]], texture2d<float, access::write> tempDensityOut [[texture(3)]] , constant AdvectionParams* params [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
+    //position = uint2(position.x, 512 - position.y);
     const float2 textureSize = float2(velocityIn.get_width(), velocityIn.get_height());
     const float2 texelSize = float2(1.f / textureSize.x, 1.f / textureSize.y);
     
     //velocity advection
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
-    float2 cVelocity = velocityIn.sample(textureSampler, uv).rg;
+    float2 u = velocityIn.sample(textureSampler, uv).rg;
     
-    float2 newUv = uv - (cVelocity * timestep * texelSize);
-    float2 nVelocity = velocityIn.sample(textureSampler, newUv).rg * params->uDissipation;
-    
+    float2 coord = uv - (u * texelSize * timestep);
+    coord = clamp(float2(0), float2(1), coord);
+    //velocity advection
+    float2 newVelocity = velocityIn.sample(textureSampler, coord).rg * params->uDissipation;
 
     //temperature and density advection
-    float4 compositeC = compositeIn.sample(textureSampler, newUv);
-    float nTemperature = compositeC.g * params->tDissipation;
-    float nDensity = compositeC.b * params->dDissipation;
+    float4 tempDensity = tempDensityIn.sample(textureSampler, uv);
+    float nTemperature = tempDensity.r * params->tDissipation;
+    float nDensity = tempDensity.g * params->dDissipation;
     
-    compositeOut.write(float4(compositeC.r, nTemperature, nDensity, compositeC.a), position);
+    //compositeOut.write(float4(compositeC.r, nTemperature, nDensity, 0), position);
+    tempDensityOut.write(float4(nTemperature, nDensity, 0.f, 1.f), position);
     
-    //Apply Buoyancy in the y direction
+    
+    //Apply Buoyancy and weight in the y direction
     if (nTemperature > 0.f )
     {
-        nVelocity += (timestep * (nTemperature * _Sigma - nDensity * _Kappa)) * float2(0.f, 1.f);
+        //newVelocity += (timestep * (nTemperature * _Sigma - nDensity * _Kappa) * float2(0.f, 0.f));
     }
+    
     
     //if (length(nVelocity) < 0.05f)
         //nVelocity = uv * length(float2(0.5f, 0.5f) - uv);
-    velocityOut.write(float4(nVelocity, 0.f, 1.f), position);
+    //velocityOut.write(float4(newVelocity, 0.f, 1.f), position);
     //output.write(composite, uv);
 }
 
@@ -169,12 +93,13 @@ kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]]
 //impulse (back force from advection) temperature
 //impulse density
 
-kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::write> compositeOut [[texture(1)]], constant ImpulseParams* params [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void Impulse(texture2d<float, access::sample> tempDensityIn [[texture(0)]], texture2d<float, access::write> tempDensityOut [[texture(1)]], constant ImpulseParams* params [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
-    float2 textureSize = float2(compositeIn.get_width(), compositeOut.get_height());
+    //position = uint2(position.x, 512 - position.y);
+    float2 textureSize = float2(tempDensityIn.get_width(), tempDensityIn.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(uv, params->origin);
+    float d = distance(params->origin, uv);
     float impulse = 0.f;
     
     if (d < params->radius)
@@ -183,39 +108,44 @@ kernel void Impulse(texture2d<float, access::sample> compositeIn [[texture(0)]],
         impulse = min(a, 1.f);
     }
     
-    float4 comp = compositeIn.sample(textureSampler, uv);
-    float temp = comp.g;
-    float dens = comp.b;
+    float4 comp = tempDensityIn.sample(textureSampler, uv);
+    float temp = comp.r;
+    float dens = comp.g;
     
-    temp = max(0.f, mix(temp, params->iTemperature, impulse));
-    dens = max(0.f, mix(dens, params->iDensity, impulse));
+    temp =  max(0.f, mix(temp, params->iTemperature, impulse));
+    dens =  max(0.f, mix(dens, params->iDensity, impulse));
     
-    compositeOut.write(float4(comp.r, temp, dens, comp.a), position);
+    tempDensityOut.write(float4(temp, dens, 0.f, 1.f), position);
 }
 
 //calculate divergence of velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]], texture2d<float, access::sample> compositeIn [[texture(1)]], texture2d<float, access::write> compositeOut [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], const uint2 position [[thread_position_in_grid]])
 {
+    //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocity.get_width(), velocity.get_height());
     float2 texelSize = 1.f/textureSize;
     
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
-    float4 composite = compositeIn.sample(textureSampler, uv);
     
-    float2 uN = velocity.sample(textureSampler, float2(uv + float2(0, -texelSize.y))).rg;
-    float2 uS = velocity.sample(textureSampler, float2(uv + float2(0, texelSize.y))).rg;
-    float2 uE = velocity.sample(textureSampler, float2(uv + float2(texelSize.x , 0))).rg;
-    float2 uW = velocity.sample(textureSampler, float2(uv + float2(-texelSize.x , 0))).rg;
+    float2 N = uv + float2(0, -texelSize.y);
+    float2 S = uv + float2(0, texelSize.y);
+    float2 W = uv + float2(-texelSize.x, 0);
+    float2 E = uv + float2(texelSize.x, 0);
     
-    float divergence = (uE.x - uW.x + uN.y - uS.y) * 0.5f; //multiply by the inverse cell size
-    compositeOut.write(float4(composite.rgb, divergence), position);
+    float2 uN = velocity.sample(textureSampler, clamp(float2(0), float2(1), N)).rg;
+    float2 uS = velocity.sample(textureSampler, clamp(float2(0), float2(1), S)).rg;
+    float2 uE = velocity.sample(textureSampler, clamp(float2(0), float2(1), E)).rg;
+    float2 uW = velocity.sample(textureSampler, clamp(float2(0), float2(1), W)).rg;
+    
+    float divergence = 0.5f * (uW.x - uE.x + uN.y - uS.y); //multiply by the inverse cell size
+    divergenceOut.write(float4(divergence, 0.f, 0.f, 1.f), position);
     
 }
 
 //jacobi iterations
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Jacobi(texture2d<float, access::sample> compositeIn [[texture(0)]], texture2d<float, access::write> compositeOut [[texture(1)]], constant JacobiParams* jacobiParams [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
+kernel void Jacobi(texture2d<float, access::sample> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], constant JacobiParams* jacobiParams [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
     //high level ( we're solving for a pressure field that satisfies the Pressure Poisson Eqation ∇²P(x) = 0 )
     //to this effect we start with initializing p to 0
@@ -228,54 +158,69 @@ kernel void Jacobi(texture2d<float, access::sample> compositeIn [[texture(0)]], 
     //sample the pressure texture, perform calcualtions on this value
     //use the divergence in calculation
     //write to the pressure texture
-    
-    float2 textureSize = float2(compositeIn.get_width(), compositeIn.get_height());
+    //position = uint2(position.x, 512 - position.y);
+    float2 textureSize = float2(pressureIn.get_width(), pressureIn.get_height());
     float2 texelSize = 1.f / textureSize;
     float alpha = jacobiParams->Alpha;
     float invB = jacobiParams->InvBeta;
     
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
+
+    float div = divergenceIn.sample(textureSampler, uv).r;
     
-    float4 compositeRead = compositeIn.sample(textureSampler, uv);
-    float div = compositeRead.a;
+    float2 N = uv + float2(0, -texelSize.y);
+    float2 S = uv + float2(0, texelSize.y);
+    float2 W = uv + float2(-texelSize.x, 0);
+    float2 E = uv + float2(texelSize.x, 0);
     
-    float pN = compositeIn.sample(textureSampler, uv + float2(0, -texelSize.y)).r;
-    float pS = compositeIn.sample(textureSampler, uv + float2(0, texelSize.y)).r;
-    float pE = compositeIn.sample(textureSampler, uv + float2(texelSize.x, 0)).r;
-    float pW = compositeIn.sample(textureSampler, uv + float2(-texelSize.x, 0)).r;
+    
+    float pN = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), N)).r;
+    float pS = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), S)).r;
+    float pE = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), E)).r;
+    float pW = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), W)).r;
     
     float prime = (pN + pS + pE + pW + alpha * div) * invB;
-    compositeOut.write(float4(prime, compositeRead.gba), position);
+    //float prime = (0) * invB;
+    //compositeOut.write(float4(uv, 0, 1), position);           testing uv thread position drift
+    pressureOut.write(float4(prime, 0.f, 0.f, 1.f), position);
     
 }
 
 //subtract gradient of pressure from the velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::sample> compositeIn [[texture(1)]], texture2d<float, access::write> velocityOut [[texture(2)]], uint2 position [[thread_position_in_grid]])
+kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::sample> pressureIn [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
+    //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocityIn.get_width(), velocityIn.get_height());
     float2 texelSize = 1.f / textureSize;
     
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     
-    float pN = compositeIn.sample(textureSampler, uv + float2(0, -texelSize.y)).r;
-    float pS = compositeIn.sample(textureSampler, uv + float2(0, texelSize.y)).r;
-    float pE = compositeIn.sample(textureSampler, uv + float2(texelSize.x, 0)).r;
-    float pW = compositeIn.sample(textureSampler, uv + float2(-texelSize.x, 0)).r;
+    float2 N = uv + float2(0, -texelSize.y);
+    float2 S = uv + float2(0, texelSize.y);
+    float2 W = uv + float2(-texelSize.x, 0);
+    float2 E = uv + float2(texelSize.x, 0);
+    
+    float pN = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), N)).r;
+    float pS = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), S)).r;
+    float pE = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), E)).r;
+    float pW = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), W)).r;
     
     float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
-    float2 pGradient = float2(pE - pW, pN - pS);
+    float2 pGradient = float2(pW - pE, pN - pS);
     float2 velocity = oldVelocity - pGradient;
-    
+    //velocity = normalize(velocity) * texelSize;
+    //velocityOut.write(float4(-1, -1, 0, 1), position);           //testing uv thread position drift
     velocityOut.write(float4(velocity, 0, 0), position);
 }
 
-kernel void Constitution(texture2d<float, access::sample> composite [[texture(0)]], texture2d<float, access::read_write> density [[texture(1)]], uint2 position [[thread_position_in_grid]])
+kernel void Constitution(texture2d<float, access::sample> composite [[texture(0)]], texture2d<float, access::read_write> density [[texture(1)]], const uint2 position [[thread_position_in_grid]])
 {
+    //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(composite.get_width(), composite.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     float4 col = composite.sample(textureSampler, uv);
-    density.write(float4(col.b * 255, 0, 0, 1), position);
+    density.write(float4(col.a * 255, 0, 0, 1), position);
     
 }
 
