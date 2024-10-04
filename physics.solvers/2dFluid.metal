@@ -7,14 +7,14 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 0.125f
-#define td 0.01f                //1 / 2000 pixels (texel delta)
+#define timestep 0.0525f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
 #define _Kappa 0.05f            //smoke weight
 
-constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
+constexpr sampler textureSampler(filter::bicubic, address::clamp_to_edge);
+constexpr sampler jacobiSampler(filter::bicubic, address::clamp_to_edge);
 
 struct AdvectionParams{
     float uDissipation; //velocity
@@ -44,6 +44,11 @@ struct JacobiParams{
  divergence(float)
  */
 
+float4 BilinearSample(texture2d<float, access::read> input)
+{
+    
+}
+
 //advect velocity to velocity
 //advect temperature to velocity
 //advect dnesity to velocity
@@ -61,7 +66,7 @@ kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]]
     float2 u = velocityIn.sample(textureSampler, uv).rg;
     
     float2 coord = uv - (u * texelSize * timestep);
-    coord = clamp(float2(0), float2(1), coord);
+    //coord = clamp(float2(0), float2(1), coord);
     //velocity advection
     float2 newVelocity = velocityIn.sample(textureSampler, coord).rg * params->uDissipation;
 
@@ -77,13 +82,13 @@ kernel void Advection(texture2d<float, access::sample> velocityIn [[texture(0)]]
     //Apply Buoyancy and weight in the y direction
     if (nTemperature > 0.f )
     {
-        //newVelocity += (timestep * (nTemperature * _Sigma - nDensity * _Kappa) * float2(0.f, 0.f));
+        newVelocity += (timestep * (nTemperature * _Sigma - nDensity * _Kappa) * float2(0.f, 1.f));
     }
     
     
     //if (length(nVelocity) < 0.05f)
         //nVelocity = uv * length(float2(0.5f, 0.5f) - uv);
-    //velocityOut.write(float4(newVelocity, 0.f, 1.f), position);
+    velocityOut.write(float4(newVelocity, 0.f, 1.f), position);
     //output.write(composite, uv);
 }
 
@@ -120,7 +125,7 @@ kernel void Impulse(texture2d<float, access::sample> tempDensityIn [[texture(0)]
 
 //calculate divergence of velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], texture2d<float, access::write> pressureOut [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocity.get_width(), velocity.get_height());
@@ -133,14 +138,14 @@ kernel void Divergence(texture2d<float, access::sample> velocity [[texture(0)]],
     float2 W = uv + float2(-texelSize.x, 0);
     float2 E = uv + float2(texelSize.x, 0);
     
-    float2 uN = velocity.sample(textureSampler, clamp(float2(0), float2(1), N)).rg;
-    float2 uS = velocity.sample(textureSampler, clamp(float2(0), float2(1), S)).rg;
-    float2 uE = velocity.sample(textureSampler, clamp(float2(0), float2(1), E)).rg;
-    float2 uW = velocity.sample(textureSampler, clamp(float2(0), float2(1), W)).rg;
+    float2 uN = velocity.sample(textureSampler,  N).rg;
+    float2 uS = velocity.sample(textureSampler,  S).rg;
+    float2 uE = velocity.sample(textureSampler,  E).rg;
+    float2 uW = velocity.sample(textureSampler,  W).rg;
     
     float divergence = 0.5f * (uW.x - uE.x + uN.y - uS.y); //multiply by the inverse cell size
     divergenceOut.write(float4(divergence, 0.f, 0.f, 1.f), position);
-    
+    pressureOut.write(float4(0, 0, 0, 1), position);
 }
 
 //jacobi iterations
@@ -166,7 +171,7 @@ kernel void Jacobi(texture2d<float, access::sample> pressureIn [[texture(0)]], t
     
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
 
-    float div = divergenceIn.sample(textureSampler, uv).r;
+    float div = divergenceIn.sample(jacobiSampler,  uv).r;
     
     float2 N = uv + float2(0, -texelSize.y);
     float2 S = uv + float2(0, texelSize.y);
@@ -174,10 +179,10 @@ kernel void Jacobi(texture2d<float, access::sample> pressureIn [[texture(0)]], t
     float2 E = uv + float2(texelSize.x, 0);
     
     
-    float pN = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), N)).r;
-    float pS = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), S)).r;
-    float pE = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), E)).r;
-    float pW = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), W)).r;
+    float pN = pressureIn.sample(jacobiSampler,  N).r;
+    float pS = pressureIn.sample(jacobiSampler,  S).r;
+    float pE = pressureIn.sample(jacobiSampler,  E).r;
+    float pW = pressureIn.sample(jacobiSampler,  W).r;
     
     float prime = (pN + pS + pE + pW + alpha * div) * invB;
     //float prime = (0) * invB;
@@ -201,10 +206,10 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     float2 W = uv + float2(-texelSize.x, 0);
     float2 E = uv + float2(texelSize.x, 0);
     
-    float pN = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), N)).r;
-    float pS = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), S)).r;
-    float pE = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), E)).r;
-    float pW = pressureIn.sample(textureSampler, clamp(float2(0), float2(1), W)).r;
+    float pN = pressureIn.sample(textureSampler, N).r;
+    float pS = pressureIn.sample(textureSampler, S).r;
+    float pE = pressureIn.sample(textureSampler, E).r;
+    float pW = pressureIn.sample(textureSampler, W).r;
     
     float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
     float2 pGradient = float2(pW - pE, pN - pS);
@@ -214,13 +219,13 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     velocityOut.write(float4(velocity, 0, 0), position);
 }
 
-kernel void Constitution(texture2d<float, access::sample> composite [[texture(0)]], texture2d<float, access::read_write> density [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[texture(0)]], texture2d<float, access::read_write> chain [[texture(1)]], const uint2 position [[thread_position_in_grid]])
 {
     //position = uint2(position.x, 512 - position.y);
-    float2 textureSize = float2(composite.get_width(), composite.get_height());
+    float2 textureSize = float2(tempDensityIn.get_width(), tempDensityIn.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
-    float4 col = composite.sample(textureSampler, uv);
-    density.write(float4(col.a * 255, 0, 0, 1), position);
+    float4 col = tempDensityIn.sample(textureSampler, uv);
+    chain.write(float4(col.g * 255, 0, 0, 1), position);
     
 }
 

@@ -79,7 +79,7 @@ class Fluid
         self.tempDensityOut = device.makeTexture(descriptor: velocityWDesc)!
         self.chain = device.makeTexture(descriptor: swapDesc)
         
-        self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.999, dDissipation: 0.99999)
+        self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.99, dDissipation: 0.9999)
         self.impulseParams = ImpulseParams(origin: SIMD2<Float>(0.5, 0), radius: 0.1, iTemperature: 10, iDensity: 1, iAuxillary: 0)
         self.jacobiParams = JacobiParams(Alpha: -1, InvBeta: 0.25)
         
@@ -197,11 +197,13 @@ class ResourceManager : NSObject
         divEncoder.setComputePipelineState(self.divergencePipeline)
         divEncoder.setTexture(fluid.velocityIn!, index: 0)
         divEncoder.setTexture(fluid.divergenceOut, index: 1)
+        divEncoder.setTexture(fluid.pressureOut, index: 2)
         divEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         divEncoder.endEncoding()
         
         let blitEncoder3 = commandBuffer!.makeBlitCommandEncoder()!
         blitEncoder3.copy(from: fluid.divergenceOut, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.divergenceIn, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+        blitEncoder3.copy(from: fluid.pressureOut, to: fluid.pressureIn)
         blitEncoder3.endEncoding()
         //blitEncoder.endEncoding()
         //need to set the pressure to 0 at this step, before doing jacobi iteration
@@ -237,7 +239,7 @@ class ResourceManager : NSObject
         /*
         let chainEncoder = commandBuffer!.makeComputeCommandEncoder()!
         chainEncoder.setComputePipelineState(self.constitutionPipeline)
-        chainEncoder.setTexture(fluid.compositeIn!, index: 0)
+        chainEncoder.setTexture(fluid.tempDensityIn, index: 0)
         chainEncoder.setTexture(fluid.chain!, index: 1)
         chainEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         chainEncoder.endEncoding()
