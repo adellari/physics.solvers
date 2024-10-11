@@ -17,8 +17,10 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundStyle(.tint)
             Text("Hello, world!")
-            
-            Button(action: 
+            MetalViewRepresentable(metalView: Simulation!.metalView)
+                .frame(width: 512, height: 512)
+            /*
+            Button(action:
             {
                 //Simulation!.Draw()
                 
@@ -32,6 +34,7 @@ struct ContentView: View {
             {
                 Image(systemName: "eye")
             }
+            */
         }
         .padding()
     }

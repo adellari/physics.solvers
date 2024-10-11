@@ -31,8 +31,14 @@ class Fluid
         var InvBeta: Float
     }
     
-    var velocityIn : MTLTexture? // in : rg, out: ba
-    var velocityOut : MTLTexture?
+    struct Surface {
+        var Ping : MTLTexture
+        var Pong : MTLTexture
+    }
+    
+    /*
+    var velocityIn : MTLTexture // in : rg, out: ba
+    var velocityOut : MTLTexture
     var compositeIn : MTLTexture?
     var compositeOut : MTLTexture?
     var tempDensityIn : MTLTexture
@@ -41,7 +47,14 @@ class Fluid
     var divergenceOut : MTLTexture
     var pressureIn : MTLTexture
     var pressureOut : MTLTexture
+    */
     var chain : MTLTexture?
+    
+    var Velocity : Surface
+    var Temperature : Surface
+    var Density : Surface
+    var Divergence : Surface
+    var Pressure : Surface
     
     var advectionParams : AdvectionParams
     var impulseParams : ImpulseParams
@@ -53,24 +66,24 @@ class Fluid
     {
         let velocityRDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
         let velocityWDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
-        let compositeRDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
-        let compositeWDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 512, height: 512, mipmapped: false)
-        let swapDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 512, height: 512, mipmapped: false)
+        let swapDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1024, height: 1024, mipmapped: true)
         let singleRDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 512, height: 512, mipmapped: false)
         let singleWDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 512, height: 512, mipmapped: false)
         
         velocityRDesc.usage = MTLTextureUsage([.shaderRead])
+        //velocityRDesc.allowGPUOptimizedContents = true
         velocityWDesc.usage = MTLTextureUsage([.shaderWrite])
-        compositeRDesc.usage = MTLTextureUsage([.shaderRead])
-        compositeWDesc.usage = MTLTextureUsage([.shaderWrite])
+        //velocityWDesc.allowGPUOptimizedContents = true
+
         swapDesc.usage = MTLTextureUsage([.shaderWrite, .shaderRead])
+        swapDesc.mipmapLevelCount = 2
         singleRDesc.usage = MTLTextureUsage([.shaderRead])
+        //singleRDesc.allowGPUOptimizedContents = true
         singleWDesc.usage = MTLTextureUsage([.shaderWrite])
+        //singleWDesc.allowGPUOptimizedContents = true
         
-        self.velocityIn = device.makeTexture(descriptor: velocityRDesc)
-        self.velocityOut = device.makeTexture(descriptor: velocityWDesc)
-        self.compositeIn = device.makeTexture(descriptor: compositeRDesc)
-        self.compositeOut = device.makeTexture(descriptor: compositeWDesc)
+        self.Velocity = Surface(Ping: device.makeTexture(descriptor: velocityRDesc)!, Pong: device.makeTexture(descriptor: velocityWDesc)!)
+        self.velocityOut =
         self.pressureIn = device.makeTexture(descriptor: singleRDesc)!
         self.pressureOut = device.makeTexture(descriptor: singleWDesc)!
         self.divergenceIn = device.makeTexture(descriptor: singleRDesc)!
@@ -117,6 +130,7 @@ class ResourceManager : NSObject
     var device : MTLDevice?
     var commandQueue : MTLCommandQueue?
     var advectionPipeline : MTLComputePipelineState
+    var buoyancyPipeline : MTLComputePipelineState
     var poissonPipeline : MTLComputePipelineState
     var jacobiPipeline : MTLComputePipelineState
     var impulsePipeline : MTLComputePipelineState
@@ -132,6 +146,7 @@ class ResourceManager : NSObject
     {
         let library = try _device.makeDefaultLibrary(bundle: .main)
         let advection = library.makeFunction(name: "Advection")
+        let buoyancy = library.makeFunction(name: "Buoyancy")
         let impulse = library.makeFunction(name: "Impulse")
         let jacobi = library.makeFunction(name: "Jacobi")
         let poisson = library.makeFunction(name: "PoissonCorrection")
@@ -144,6 +159,7 @@ class ResourceManager : NSObject
         self.impulsePipeline = try library.device.makeComputePipelineState(function: impulse!)
         self.divergencePipeline = try library.device.makeComputePipelineState(function: divergence!)
         self.constitutionPipeline = try library.device.makeComputePipelineState(function: constitution!)
+        self.buoyancyPipeline = try library.device.makeComputePipelineState(function: buoyancy!)
         
         self.commandQueue = _device.makeCommandQueue()
         self.device = _device
@@ -162,24 +178,53 @@ class ResourceManager : NSObject
     func Draw()
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
-        let encoder1 = commandBuffer!.makeComputeCommandEncoder()!
         
-        encoder1.setComputePipelineState(self.advectionPipeline)
-        encoder1.setTexture(fluid.velocityIn!, index: 0)
-        encoder1.setTexture(fluid.velocityIn!, index: 4)
-        encoder1.setTexture(fluid.velocityOut!, index: 1)
-        encoder1.setTexture(fluid.tempDensityIn, index: 2)
-        encoder1.setTexture(fluid.tempDensityOut, index: 3)
-        encoder1.setBytes(&fluid.advectionParams, length: MemoryLayout<Fluid.AdvectionParams>.stride, index: 0)
-        encoder1.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
-        encoder1.endEncoding()
+        
+        let advectVelocity = commandBuffer!.makeComputeCommandEncoder()!
+        var diffuse = 0.99;
+        advectVelocity.setComputePipelineState(self.advectionPipeline)
+        advectVelocity.setTexture(fluid.velocityIn, index: 0)
+        advectVelocity.setTexture(fluid.velocityIn, index: 1)
+        advectVelocity.setTexture(fluid.velocityOut, index: 2)
+        advectVelocity.setBytes(&diffuse, length: MemoryLayout<Float>.stride, index: 0)
+        advectVelocity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        advectVelocity.label = "advectVelocity"
+        advectVelocity.endEncoding()
+        
+        
         
         let blitEncoder1 = commandBuffer!.makeBlitCommandEncoder()!
-        blitEncoder1.copy(from: fluid.velocityOut!, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.velocityIn!, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
-        blitEncoder1.copy(from: fluid.tempDensityOut, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.tempDensityIn, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+        blitEncoder1.copy(from: fluid.velocityOut, to: fluid.velocityIn)
+        //blitEncoder1.copy(from: fluid.tempDensityOut, to: fluid.tempDensityIn)
         blitEncoder1.endEncoding()
         
+        let advectTemperatureDensity = commandBuffer!.makeComputeCommandEncoder()!
+        advectTemperatureDensity.setComputePipelineState(self.advectionPipeline)
+        diffuse = 0.9999
+        advectTemperatureDensity.setTexture(fluid.velocityIn, index: 0)
+        advectTemperatureDensity.setTexture(fluid.tempDensityIn, index: 1)
+        advectTemperatureDensity.setTexture(fluid.tempDensityOut, index: 2)
+        advectTemperatureDensity.setBytes(&diffuse, length: MemoryLayout<Float>.stride, index: 0)
+        advectTemperatureDensity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        advectTemperatureDensity.label = "advectTemperatureAndDensity"
+        advectTemperatureDensity.endEncoding()
         
+        let blitTemperatureDensity = commandBuffer!.makeBlitCommandEncoder()!
+        blitTemperatureDensity.copy(from: fluid.tempDensityOut, to: fluid.tempDensityIn)
+        blitTemperatureDensity.endEncoding()
+        
+        let buoyancyEncoder = commandBuffer!.makeComputeCommandEncoder()!
+        buoyancyEncoder.setComputePipelineState(self.buoyancyPipeline)
+        buoyancyEncoder.setTexture(fluid.velocityIn, index: 0)
+        buoyancyEncoder.setTexture(fluid.tempDensityIn, index: 1)
+        buoyancyEncoder.setTexture(fluid.velocityOut, index: 2)
+        buoyancyEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        buoyancyEncoder.label = "Buoyancy"
+        buoyancyEncoder.endEncoding()
+        
+        let blitVelocity = commandBuffer!.makeBlitCommandEncoder()!
+        blitVelocity.copy(from: fluid.velocityOut, to: fluid.velocityIn)
+        blitVelocity.endEncoding()
         
         let encoder2 = commandBuffer!.makeComputeCommandEncoder()!
         encoder2.setComputePipelineState(self.impulsePipeline)
@@ -187,23 +232,25 @@ class ResourceManager : NSObject
         encoder2.setTexture(fluid.tempDensityOut, index: 1)
         encoder2.setBytes(&fluid.impulseParams, length:MemoryLayout<Fluid.ImpulseParams>.stride, index: 0)
         encoder2.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        encoder2.label = "Impulse"
         encoder2.endEncoding()
         
         //confirm we don't need to blit the composite texture here
         let blitImpulse = commandBuffer!.makeBlitCommandEncoder()!
-        blitImpulse.copy(from: fluid.tempDensityOut, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1),to: fluid.tempDensityIn, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+        blitImpulse.copy(from: fluid.tempDensityOut, to: fluid.tempDensityIn)
         blitImpulse.endEncoding()
         
         let divEncoder = commandBuffer!.makeComputeCommandEncoder()!
         divEncoder.setComputePipelineState(self.divergencePipeline)
-        divEncoder.setTexture(fluid.velocityIn!, index: 0)
+        divEncoder.setTexture(fluid.velocityIn, index: 0)
         divEncoder.setTexture(fluid.divergenceOut, index: 1)
         divEncoder.setTexture(fluid.pressureOut, index: 2)
         divEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        divEncoder.label = "Divergence"
         divEncoder.endEncoding()
         
         let blitEncoder3 = commandBuffer!.makeBlitCommandEncoder()!
-        blitEncoder3.copy(from: fluid.divergenceOut, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.divergenceIn, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+        blitEncoder3.copy(from: fluid.divergenceOut, to: fluid.divergenceIn)
         blitEncoder3.copy(from: fluid.pressureOut, to: fluid.pressureIn)
         blitEncoder3.endEncoding()
         //blitEncoder.endEncoding()
@@ -214,37 +261,39 @@ class ResourceManager : NSObject
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
-            _c.setBytes(&fluid.jacobiParams, length: MemoryLayout<Fluid.JacobiParams>.stride, index: 0)
+            //_c.setBytes(&fluid.jacobiParams, length: MemoryLayout<Fluid.JacobiParams>.stride, index: 0)
             _c.setTexture(fluid.pressureIn, index: 0)
             _c.setTexture(fluid.pressureOut, index: 1)
             _c.setTexture(fluid.divergenceIn, index: 2)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             _c.endEncoding()
             let _b = commandBuffer!.makeBlitCommandEncoder()!
-            _b.copy(from: fluid.pressureOut, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.pressureIn, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+            _b.copy(from: fluid.pressureOut, to: fluid.pressureIn)
+            _b.label = "Jacobi"
             _b.endEncoding()
         }
         
         let encoder3 = commandBuffer!.makeComputeCommandEncoder()!
         encoder3.setComputePipelineState(self.poissonPipeline)
-        encoder3.setTexture(fluid.velocityIn!, index: 0)
-        encoder3.setTexture(fluid.velocityOut!, index: 1)
+        encoder3.setTexture(fluid.velocityIn, index: 0)
+        encoder3.setTexture(fluid.velocityOut, index: 1)
         encoder3.setTexture(fluid.pressureIn, index: 2)
         encoder3.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        encoder3.label = "Poisson Correction"
         encoder3.endEncoding()
         
         let blitEncoder4 = commandBuffer!.makeBlitCommandEncoder()!
-        blitEncoder4.copy(from: fluid.velocityOut!, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOriginMake(0, 0, 0), sourceSize: MTLSizeMake(512, 512, 1), to: fluid.velocityIn!, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOriginMake(0,0,0))
+        blitEncoder4.copy(from: fluid.velocityOut, to: fluid.velocityIn)
         blitEncoder4.endEncoding()
         
-        /*
+        
         let chainEncoder = commandBuffer!.makeComputeCommandEncoder()!
         chainEncoder.setComputePipelineState(self.constitutionPipeline)
-        chainEncoder.setTexture(fluid.tempDensityIn, index: 0)
-        chainEncoder.setTexture(fluid.chain!, index: 1)
+        chainEncoder.setTexture(fluid.velocityIn, index: 0)
+        chainEncoder.setTexture(fluid.chain, index: 1)
         chainEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         chainEncoder.endEncoding()
-        */
+        
         //advect
         //blit composite & velocity textures
         //apply impulse
@@ -269,16 +318,18 @@ class ResourceManager : NSObject
  
  func draw(in view: MTKView)
  {
- guard let drawable = view.currentDrawable else { return }
- Draw()
- 
- let commandBuffer = commandQueue!.makeCommandBuffer()!
- let blitEncoder = commandBuffer.makeBlitCommandEncoder()!
- 
- blitEncoder.copy(from: fluid.chain!, to: drawable.texture)
- blitEncoder.endEncoding()
- commandBuffer.present(drawable)
- commandBuffer.commit()
+     guard let drawable = view.currentDrawable else { return }
+     Draw()
+     
+     let commandBuffer = commandQueue!.makeCommandBuffer()!
+     let blitSwapchain = commandBuffer.makeBlitCommandEncoder()!
+     let nextTexture = drawable.texture
+     let chain = fluid.chain!
+     //print(nextTexture.width, nextTexture.height)
+     blitSwapchain.copy(from: chain, to: nextTexture)
+     blitSwapchain.endEncoding()
+     commandBuffer.present(drawable)
+     commandBuffer.commit()
  }
  
  }
