@@ -36,6 +36,10 @@ struct ContentView: View {
             }
             */
         }
+        .onAppear()
+        {
+            print(" we've served the view")
+        }
         .padding()
     }
     
