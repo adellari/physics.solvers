@@ -206,17 +206,15 @@ class ResourceManager : NSObject
         
         
         let advectVelocity = commandBuffer!.makeComputeCommandEncoder()!
-        var diffuse = 0.99;
+        var diffuse : Float32 = 0.99
         advectVelocity.setComputePipelineState(self.advectionPipeline)
         advectVelocity.setTexture(fluid.Velocity.Ping, index: 0)
         advectVelocity.setTexture(fluid.Velocity.Ping, index: 1)
         advectVelocity.setTexture(fluid.Velocity.Pong, index: 2)
-        advectVelocity.setBytes(&diffuse, length: MemoryLayout<Float>.stride, index: 0)
+        advectVelocity.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectVelocity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         advectVelocity.label = "Advect Velocity"
         advectVelocity.endEncoding()
-        
-        
         
         let blitEncoder1 = commandBuffer!.makeBlitCommandEncoder()!
         blitEncoder1.copy(from: fluid.Velocity.Pong, to: fluid.Velocity.Ping)
@@ -225,10 +223,12 @@ class ResourceManager : NSObject
         blitEncoder1.endEncoding()
         
         let advectTemperature = commandBuffer!.makeComputeCommandEncoder()!
+        diffuse = 0.99
         advectTemperature.setComputePipelineState(self.advectionPipeline)
         advectTemperature.setTexture(fluid.Velocity.Ping, index: 0)
         advectTemperature.setTexture(fluid.Temperature.Ping, index: 1)
         advectTemperature.setTexture(fluid.Temperature.Pong, index: 2)
+        advectTemperature.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectTemperature.label = "Advect Temperature"
         advectTemperature.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         advectTemperature.endEncoding()
@@ -239,10 +239,12 @@ class ResourceManager : NSObject
         blitTempAdvection.endEncoding()
         
         let advectDensity = commandBuffer!.makeComputeCommandEncoder()!
+        diffuse = 0.9999
         advectDensity.setComputePipelineState(self.advectionPipeline)
         advectDensity.setTexture(fluid.Velocity.Ping, index: 0)
         advectDensity.setTexture(fluid.Density.Ping, index: 1)
         advectDensity.setTexture(fluid.Density.Pong, index: 2)
+        advectDensity.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectDensity.label = "Advect Density"
         advectDensity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         advectDensity.endEncoding()
@@ -302,7 +304,7 @@ class ResourceManager : NSObject
         //need to set the pressure to 0 at this step, before doing jacobi iteration
         
         
-        for _ in 0..<50
+        for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
@@ -383,7 +385,7 @@ class ResourceManager : NSObject
      }
      
      
-     if frames == 6 {
+     if frames == 10 {
          //MTLCaptureManager.shared().stopCapture()
      }
      frames += 1

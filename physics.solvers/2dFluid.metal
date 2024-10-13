@@ -7,11 +7,11 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 0.125f
+#define timestep 2.f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
-#define _Kappa 0.5f            //smoke weight
+#define _Kappa 0.05f            //smoke weight
 
 
 struct AdvectionParams{
@@ -47,18 +47,28 @@ struct JacobiParams{
 //advect temperature to velocity
 //advect dnesity to velocity
 
-kernel void Advection(texture2d<float, access::read> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], constant float* dissipation, const uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]],constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler textureSampler(filter::bicubic, address::clamp_to_zero);
+    constexpr sampler textureSampler(filter::linear);
     //position = uint2(position.x, 512 - position.y);
     const float2 textureSize = float2(velocitySample.get_width(), velocitySample.get_height());
     const float2 texelSize = float2(1.f / textureSize.x, 1.f / textureSize.y);
-    float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
+    float2 fragCoord = float2(position.xy);
+    float2 uv = fragCoord * texelSize;
     
     //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
+    //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
     float2 currentVelocity = velocitySample.read(position).xy;
-    float2 newPosition = float2(position.x + timestep * currentVelocity.x, position.y - timestep * currentVelocity.y);
-    float2 newValue = 0.9999 * sourceSample.sample(textureSampler, texelSize * newPosition).xy;
+    float2 newPosition = float2(position.x - timestep * currentVelocity.x, position.y + timestep * currentVelocity.y);
+    
+    float2 newValue = dissipation * sourceSample.sample(textureSampler, texelSize * (fragCoord - timestep * currentVelocity)).xy;
+    
+    if (position.x >= 500) newValue = 0.f;
+    if (position.x <= 12) newValue = 0.f;
+    
+    if (position.y >= 500) newValue = 0.f;
+    if (position.y <= 12) newValue = 0.f;
+    
     sink.write(float4(newValue, newValue), position);
 }
 
@@ -77,11 +87,6 @@ kernel void Buoyancy(texture2d<float, access::read> velocityIn [[texture(0)]], t
     velocityOut.write(float4(currentVelocity, currentVelocity), position);
 }
 
-//          [Need to Blit velocity AND composite here] before Impulse
-
-
-//impulse (back force from advection) temperature
-//impulse density
 
 kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]], texture2d<float, access::write> densityOut [[texture(1)]], constant ImpulseParams* params [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
@@ -124,8 +129,8 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     float2 E = uv + float2(texelSize.x, 0);
     */
     
-    uint2 N = position + uint2(0, -1);
-    uint2 S = position + uint2(0, 1);
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -180,8 +185,8 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float2 W = uv + float2(-texelSize.x, 0);
     float2 E = uv + float2(texelSize.x, 0);
     */
-    uint2 N = position + uint2(0, -1);
-    uint2 S = position + uint2(0, 1);
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -206,17 +211,17 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 
 //subtract gradient of pressure from the velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void PoissonCorrection(texture2d<float, access::read> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
-    //constexpr sampler textureSampler(filter::nearest, address::clamp_to_edge);
+    constexpr sampler textureSampler(filter::nearest);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocityIn.get_width(), velocityIn.get_height());
     float2 texelSize = 1.f / textureSize;
     
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     
-    uint2 N = position + uint2(0, -1);
-    uint2 S = position + uint2(0, 1);
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -234,8 +239,8 @@ kernel void PoissonCorrection(texture2d<float, access::read> velocityIn [[textur
     if (position.y <= 12) pN = pC;
     
     
-    //float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
-    float2 oldVelocity = velocityIn.read(position).xy;
+    float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
+    //float2 oldVelocity = velocityIn.read(position).xy;
     float2 pGradient = float2(pE - pW, pN - pS) * 1.f;
     float2 velocity = oldVelocity - pGradient;
     //velocity = normalize(velocity) * texelSize;
@@ -245,7 +250,7 @@ kernel void PoissonCorrection(texture2d<float, access::read> velocityIn [[textur
 
 kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[texture(0)]], texture2d<float, access::read_write> chain [[texture(1)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler textureSampler(filter::linear, address::clamp_to_zero);
+    constexpr sampler textureSampler(filter::linear);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(tempDensityIn.get_width(), tempDensityIn.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
