@@ -36,18 +36,6 @@ class Fluid
         var Pong : MTLTexture
     }
     
-    /*
-    var velocityIn : MTLTexture // in : rg, out: ba
-    var velocityOut : MTLTexture
-    var compositeIn : MTLTexture?
-    var compositeOut : MTLTexture?
-    var tempDensityIn : MTLTexture
-    var tempDensityOut : MTLTexture
-    var divergenceIn : MTLTexture
-    var divergenceOut : MTLTexture
-    var pressureIn : MTLTexture
-    var pressureOut : MTLTexture
-    */
     var chain : MTLTexture?
     
     var Velocity : Surface
@@ -371,7 +359,7 @@ class ResourceManager : NSObject
      guard let drawable = view.currentDrawable else { return }
      Draw()
      
-     if (frames == 0)
+     if (frames == 100)
      {
          do {
              let captureManager = MTLCaptureManager.shared()
@@ -385,7 +373,7 @@ class ResourceManager : NSObject
      }
      
      
-     if frames == 10 {
+     if frames == 106 {
          //MTLCaptureManager.shared().stopCapture()
      }
      frames += 1

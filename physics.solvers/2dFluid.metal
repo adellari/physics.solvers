@@ -7,11 +7,11 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 2.f
+#define timestep 3.5f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
-#define _Kappa 0.05f            //smoke weight
+#define _Kappa 0.7f            //smoke weight
 
 
 struct AdvectionParams{
@@ -49,7 +49,7 @@ struct JacobiParams{
 
 kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]],constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler textureSampler(filter::linear);
+    constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
     const float2 textureSize = float2(velocitySample.get_width(), velocitySample.get_height());
     const float2 texelSize = float2(1.f / textureSize.x, 1.f / textureSize.y);
@@ -95,7 +95,7 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
     float2 textureSize = float2(temperatureOut.get_width(), temperatureOut.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(float2(0.5, 0.5), uv);
+    float d = distance(float2(0.5, 0.15), uv);
     float impulse = 0.f;
     
     if (d < 0.1)
@@ -143,8 +143,8 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     if (position.x >= 500) uE = 0.f;
     if (position.x <= 12) uW = 0.f;
     
-    if (position.y >= 500) uS = 0.f;
-    if (position.y <= 12) uN = 0.f;
+    if (position.y >= 500) uN = 0.f;
+    if (position.y <= 12) uS = 0.f;
     
     
     float divergence = (0.5f /1.f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
@@ -197,11 +197,11 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float pC = pressureIn.read(position).r;
     
     
-    if (position.x >= 500) pE = 0;
-    if (position.x <= 12) pW = 0;
+    if (position.x >= 500) pE = pC;
+    if (position.x <= 12) pW = pC;
     
-    if (position.y >= 500) pS = 0;
-    if (position.y <= 12) pN = 0;
+    if (position.y >= 500) pN = pC;
+    if (position.y <= 12) pS = pC;
     
 
     float prime = (pW + pE + pS + pN + (-1) * div) * 0.25f;
@@ -213,7 +213,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
 kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler textureSampler(filter::nearest);
+    constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocityIn.get_width(), velocityIn.get_height());
     float2 texelSize = 1.f / textureSize;
@@ -235,8 +235,8 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     if (position.x >= 500) pE = pC;
     if (position.x <= 12) pW = pC;
     
-    if (position.y >= 500) pS = pC;
-    if (position.y <= 12) pN = pC;
+    if (position.y >= 500) pN = pC;
+    if (position.y <= 12) pS = pC;
     
     
     float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
