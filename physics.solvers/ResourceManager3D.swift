@@ -7,6 +7,7 @@
 
 import Metal
 import MetalKit
+import simd
 
 class Fluid3D {
     
@@ -15,12 +16,25 @@ class Fluid3D {
         var Pong : MTLTexture
     }
     
+    struct Params {
+        let tempImpulse : Float = 10
+        let reactImpulse : Float = 1
+        let densityImpulse : Float = 1
+        let reactDecay : Float = 0.001
+        let vorticityStrength : Float = 1
+        let origin : SIMD3<Float> = SIMD3<Float>(0, 1, 0)
+        let radius : Float = 0.5
+    }
+    
     var Velocity : Surface
     var Temperature : Surface
     var Pressure : Surface
     var Divergence : Surface
     var Density : Surface
+    var Reaction : Surface  //keep track of fire reaction lifetime 
+    var Temporary3f : MTLTexture
     var Obstacles : MTLTexture?
+    
     
     init(device : MTLDevice, size : MTLSize)
     {
@@ -48,12 +62,16 @@ class Fluid3D {
         fourChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
         fourChannelR.usage = MTLTextureUsage([.shaderWrite])
         
+        let fourChannelRW = fourChannelW
+        fourChannelRW.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
         Velocity = Surface(Ping: device.makeTexture(descriptor: fourChannelR)!, Pong: device.makeTexture(descriptor: fourChannelW)!)
         Divergence = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Temperature = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Density = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Pressure = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        
+        Reaction = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
+        Temporary3f = device.makeTexture(descriptor: fourChannelRW)!
         //Obstacles = device.makeTexture(descriptor: singleChannelW)!
         Velocity.Ping.label = "Velocity Read"
         self.Velocity.Pong.label = "Velocity Write"
@@ -69,6 +87,11 @@ class Fluid3D {
         
         self.Divergence.Ping.label = "Divergence Read"
         self.Divergence.Pong.label = "Divergence Write"
+        
+        self.Reaction.Ping.label = "Reaction Read"
+        self.Reaction.Pong.label = "Reaction Write"
+        
+        self.Temporary3f.label = "Temporary Velocity"
     }
 }
 
@@ -85,11 +108,11 @@ extension ResourceManager {
     
     //buoyancy
     
+    //reaction impulse
+    
     //temperature impulse
     
-    //density impulse
-    
-    //extinguishment impulse
+    //extinguishment density impulse
     
     //vorticity confinement
     
