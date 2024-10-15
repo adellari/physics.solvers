@@ -30,11 +30,11 @@ class Fluid3D {
         singleChannelW.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
         singleChannelW.usage = MTLTextureUsage([.shaderWrite])
         
-        let doubleChannelW = MTLTextureDescriptor()
-        doubleChannelW.pixelFormat = .rg16Float
-        doubleChannelW.textureType = .type3D
-        doubleChannelW.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        doubleChannelW.usage = MTLTextureUsage([.shaderWrite])
+        let fourChannelW = MTLTextureDescriptor()
+        fourChannelW.pixelFormat = .rgba16Float;
+        fourChannelW.textureType = .type3D
+        fourChannelW.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
+        fourChannelW.usage = MTLTextureUsage([.shaderWrite])
         
         let singleChannelR = MTLTextureDescriptor()
         singleChannelR.pixelFormat = .r16Float
@@ -42,13 +42,13 @@ class Fluid3D {
         singleChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
         singleChannelR.usage = MTLTextureUsage([.shaderRead])
         
-        let doubleChannelR = MTLTextureDescriptor()
-        doubleChannelR.pixelFormat = .rg16Float
-        doubleChannelR.textureType = .type3D
-        doubleChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        doubleChannelR.usage = MTLTextureUsage([.shaderWrite])
+        let fourChannelR = MTLTextureDescriptor()
+        fourChannelR.pixelFormat = .rg16Float
+        fourChannelR.textureType = .type3D
+        fourChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
+        fourChannelR.usage = MTLTextureUsage([.shaderWrite])
         
-        Velocity = Surface(Ping: device.makeTexture(descriptor: doubleChannelR)!, Pong: device.makeTexture(descriptor: doubleChannelW)!)
+        Velocity = Surface(Ping: device.makeTexture(descriptor: fourChannelR)!, Pong: device.makeTexture(descriptor: fourChannelW)!)
         Divergence = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Temperature = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Density = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
@@ -75,5 +75,25 @@ class Fluid3D {
 extension ResourceManager {
     
     
+    //temperature advection
     
+    //density advection
+    
+    //reaction advection
+    
+    //velocity advection
+    
+    //buoyancy
+    
+    //temperature impulse
+    
+    //density impulse
+    
+    //extinguishment impulse
+    
+    //vorticity confinement
+    
+    //divergence
+    
+    //jacobi iteration relaxation on pressure
 }
