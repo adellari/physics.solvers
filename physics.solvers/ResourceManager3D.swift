@@ -22,7 +22,7 @@ class Fluid3D {
         let densityImpulse : Float = 1
         let reactDecay : Float = 0.001
         let vorticityStrength : Float = 1
-        let origin : SIMD3<Float> = SIMD3<Float>(0, 1, 0)
+        let origin : SIMD3<Float> = SIMD3<Float>(0, 0.1, 0)
         let radius : Float = 0.5
     }
     
