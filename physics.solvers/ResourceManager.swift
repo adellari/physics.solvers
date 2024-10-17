@@ -278,14 +278,14 @@ class ResourceManager : NSObject
         divEncoder.setComputePipelineState(self.divergencePipeline)
         divEncoder.setTexture(fluid.Velocity.Ping, index: 0)
         divEncoder.setTexture(fluid.Divergence.Pong, index: 1)
-        divEncoder.setTexture(fluid.Pressure.Pong, index: 2)
+        divEncoder.setTexture(fluid.Pressure.Pong, index: 2)    //we don't actually zero out pressure anymore
         divEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         divEncoder.label = "Divergence"
         divEncoder.endEncoding()
         
         let blitEncoder3 = commandBuffer!.makeBlitCommandEncoder()!
         blitEncoder3.copy(from: fluid.Divergence.Pong, to: fluid.Divergence.Ping)
-        blitEncoder3.copy(from: fluid.Pressure.Pong, to: fluid.Pressure.Ping)
+        //blitEncoder3.copy(from: fluid.Pressure.Pong, to: fluid.Pressure.Ping)
         blitEncoder3.label = "Swap Divergence"
         blitEncoder3.endEncoding()
         //blitEncoder.endEncoding()

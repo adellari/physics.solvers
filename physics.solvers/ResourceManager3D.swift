@@ -29,7 +29,7 @@ class Fluid3D {
     var Velocity : Surface
     var Temperature : Surface
     var Pressure : Surface
-    var Divergence : Surface
+    //var Divergence : Surface
     var Density : Surface
     var Reaction : Surface  //keep track of fire reaction lifetime 
     var Temporary3f : MTLTexture
@@ -66,7 +66,7 @@ class Fluid3D {
         fourChannelRW.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
         
         Velocity = Surface(Ping: device.makeTexture(descriptor: fourChannelR)!, Pong: device.makeTexture(descriptor: fourChannelW)!)
-        Divergence = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
+        //Divergence = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Temperature = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Density = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
         Pressure = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
@@ -85,8 +85,8 @@ class Fluid3D {
         self.Pressure.Ping.label = "Pressure Read"
         self.Pressure.Pong.label = "Pressure Write"
         
-        self.Divergence.Ping.label = "Divergence Read"
-        self.Divergence.Pong.label = "Divergence Write"
+        //self.Divergence.Ping.label = "Divergence Read"
+        //self.Divergence.Pong.label = "Divergence Write"
         
         self.Reaction.Ping.label = "Reaction Read"
         self.Reaction.Pong.label = "Reaction Write"
@@ -117,6 +117,9 @@ extension ResourceManager {
     //vorticity confinement
     
     //divergence
+    
+    //[shouldn't we zero out the pressure to respect the poisson eq]
+    //[We in fact should NOT zero out pressure]
     
     //jacobi iteration relaxation on pressure
 }

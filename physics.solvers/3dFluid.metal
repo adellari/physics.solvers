@@ -27,9 +27,10 @@ kernel void Advection3(texture3d<float, access::sample> VelocityIn [[texture(0)]
 
 kernel void Buoyancy3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::read> Density [[texture(1)]], texture3d<float, access::read> Temperature [[texture(2)]], texture3d<float, access::write> VelocityOut [[texture(3)]],   const uint3 position [[thread_position_in_grid]])
 {
-    
+    /*
     float3 dim = float3(VelocityIn.get_width(), VelocityIn.get_height(), VelocityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
+    */
     
     float3 u = VelocityIn.read(position).xyz;
     float t = Temperature.read(position).x;
@@ -58,8 +59,10 @@ kernel void Impulse3(texture3d<float, access::read> QuantIn [[texture(0)]], text
 
 kernel void EImpulse3(texture3d<float, access::read> DensityIn [[texture(0)]], texture3d<float, access::write> DensityOut [[texture(1)]], texture3d<float, access::read> ReactionIn, constant float& extinguishment [[buffer(0)]], constant float& impulseAmount [[buffer(1)]], const uint3 position [[thread_position_in_grid]])
 {
+    /*
     float3 dim = float3(DensityIn.get_width(), DensityIn.get_height(), DensityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
+    */
     
     float reactLife = ReactionIn.read(position).x;
     float amount = 0.f;
@@ -72,8 +75,10 @@ kernel void EImpulse3(texture3d<float, access::read> DensityIn [[texture(0)]], t
 
 kernel void Vorticity3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::write> VorticityOut [[texture(1)]], const uint3 position [[thread_position_in_grid]])
 {
+    /*
     float3 dim = float3(VelocityIn.get_width(), VelocityIn.get_height(), VelocityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
+    */
     
     uint3 left = uint3(position.x - 1, position.yz);
     uint3 right = uint3(position.x + 1, position.yz);
@@ -97,8 +102,10 @@ kernel void Vorticity3(texture3d<float, access::read> VelocityIn [[texture(0)]],
 
 kernel void Confinement3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::read> VorticityIn [[texture(1)]], texture3d<float, access::write> VelocityOut [[texture(2)]], constant float& Epsilon [[buffer(0)]], const uint3 position [[thread_position_in_grid]])
 {
+    /*
     float3 dim = float3(VelocityIn.get_width(), VelocityIn.get_height(), VelocityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
+    */
     
     uint3 left = uint3(position.x - 1, position.yz);
     uint3 right = uint3(position.x + 1, position.yz);
@@ -125,8 +132,10 @@ kernel void Confinement3(texture3d<float, access::read> VelocityIn [[texture(0)]
 
 kernel void Divergence3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::write> DivergenceOut [[texture(1)]], const uint3 position [[thread_position_in_grid]])
 {
+    /*
     float3 dim = float3(VelocityIn.get_width(), VelocityIn.get_height(), VelocityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
+    */
     
     uint3 left = uint3(position.x - 1, position.yz);
     uint3 right = uint3(position.x + 1, position.yz);
@@ -147,11 +156,50 @@ kernel void Divergence3(texture3d<float, access::read> VelocityIn [[texture(0)]]
     DivergenceOut.write(float4(divergence, 0, 0, 1), position);
 }
 
-kernel void Jacobi3(const uint3 position [[thread_position_in_grid]])
+kernel void Jacobi3(texture3d<float, access::read> PressureIn [[texture(0)]], texture3d<float, access::write> PressureOut [[texture(1)]], texture3d<float, access::read> DivergenceIn [[texture(2)]], const uint3 position [[thread_position_in_grid]])
 {
+    uint3 left = uint3(position.x - 1, position.yz);
+    uint3 right = uint3(position.x + 1, position.yz);
+    uint3 up = uint3(position.x, position.y + 1, position.z);
+    uint3 down = uint3(position.x, position.y - 1, position.z);
+    uint3 forward = uint3(position.xy, position.z + 1);
+    uint3 back = uint3(position.xy, position.z - 1);
     
+    float pL = PressureIn.read(left).x;
+    float pR = PressureIn.read(right).x;
+    float pU = PressureIn.read(up).x;
+    float pD = PressureIn.read(down).x;
+    float pF = PressureIn.read(forward).x;
+    float pB = PressureIn.read(back).x;
+    
+    float divergence = DivergenceIn.read(position).x;
+    float pressure = (pL + pR + pU + pD + pF + pB - divergence) / 6.0;
+    
+    PressureOut.write(float4(pressure, 0, 0, 1), position);
 }
 
+kernel void PoissonCorrection3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::write> VelocityOut [[texture(1)]], texture3d<float, access::read> PressureIn [[texture(2)]], const uint3 position [[thread_position_in_grid]])
+{
+    uint3 left = uint3(position.x - 1, position.yz);
+    uint3 right = uint3(position.x + 1, position.yz);
+    uint3 up = uint3(position.x, position.y + 1, position.z);
+    uint3 down = uint3(position.x, position.y - 1, position.z);
+    uint3 forward = uint3(position.xy, position.z + 1);
+    uint3 back = uint3(position.xy, position.z - 1);
+    
+    float pL = PressureIn.read(left).x;
+    float pR = PressureIn.read(right).x;
+    float pU = PressureIn.read(up).x;
+    float pD = PressureIn.read(down).x;
+    float pF = PressureIn.read(forward).x;
+    float pB = PressureIn.read(back).x;
+    
+    float3 u = VelocityIn.read(position).xyz;
+    float3 pGrad = float3((pR - pL), (pU - pD), (pF - pB));
+    u = u - pGrad;
+    
+    VelocityOut.write(float4(u, 1), position);
+}
 
 
 

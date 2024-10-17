@@ -149,7 +149,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     
     float divergence = (0.5f /1.f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
     divergenceOut.write(float4(divergence, 0, 0, 0), position);
-    pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
+    //pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
 }
 
 //jacobi iterations
