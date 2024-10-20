@@ -74,20 +74,20 @@ class Fluid
         self.Density = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
         self.chain = device.makeTexture(descriptor: swapDesc)
         
-        self.Velocity.Ping.label = "Velocity Read"
-        self.Velocity.Pong.label = "Velocity Write"
+        self.Velocity.Ping.label = "Velocity Ping"
+        self.Velocity.Pong.label = "Velocity Pong"
         
-        self.Temperature.Ping.label = "Temperature Read"
-        self.Temperature.Pong.label = "Temperature Write"
+        self.Temperature.Ping.label = "Temperature Ping"
+        self.Temperature.Pong.label = "Temperature Pong"
         
-        self.Density.Ping.label = "Density Read"
-        self.Density.Pong.label = "Density Write"
+        self.Density.Ping.label = "Density Ping"
+        self.Density.Pong.label = "Density Pong"
         
-        self.Pressure.Ping.label = "Pressure Read"
-        self.Pressure.Pong.label = "Pressure Write"
+        self.Pressure.Ping.label = "Pressure Ping"
+        self.Pressure.Pong.label = "Pressure Pong"
         
-        self.Divergence.Ping.label = "Divergence Read"
-        self.Divergence.Pong.label = "Divergence Write"
+        self.Divergence.Ping.label = "Divergence Ping"
+        self.Divergence.Pong.label = "Divergence Pong"
         
         self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.99, dDissipation: 0.9999)
         self.impulseParams = ImpulseParams(origin: SIMD2<Float>(0.5, 0), radius: 0.1, iTemperature: 10, iDensity: 1, iAuxillary: 0)

@@ -7,11 +7,11 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 3.5f
+#define timestep 2.1f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
-#define _Kappa 0.7f            //smoke weight
+#define _Kappa 0.07f            //smoke weight
 
 
 struct AdvectionParams{

@@ -32,71 +32,93 @@ class Fluid3D {
     //var Divergence : Surface
     var Density : Surface
     var Reaction : Surface  //keep track of fire reaction lifetime 
-    var Temporary3f : MTLTexture
+    var Temporary : MTLTexture
     var Obstacles : MTLTexture?
     
     
     init(device : MTLDevice, size : MTLSize)
     {
-        let singleChannelW = MTLTextureDescriptor()
-        singleChannelW.pixelFormat = .r16Float
-        singleChannelW.textureType = .type3D
-        singleChannelW.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        singleChannelW.usage = MTLTextureUsage([.shaderWrite])
+        let singleChannel = MTLTextureDescriptor()
+        singleChannel.pixelFormat = .r16Float
+        singleChannel.textureType = .type3D
+        singleChannel.width = size.width; singleChannel.height = size.height; singleChannel.depth = size.depth
+        singleChannel.usage = MTLTextureUsage([.shaderWrite, .shaderRead])
         
-        let fourChannelW = MTLTextureDescriptor()
-        fourChannelW.pixelFormat = .rgba16Float;
-        fourChannelW.textureType = .type3D
-        fourChannelW.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        fourChannelW.usage = MTLTextureUsage([.shaderWrite])
+        let fourChannel = MTLTextureDescriptor()
+        fourChannel.pixelFormat = .rgba16Float;
+        fourChannel.textureType = .type3D
+        fourChannel.width = size.width; singleChannel.height = size.height; singleChannel.depth = size.depth
+        fourChannel.usage = MTLTextureUsage([.shaderWrite, .shaderRead])
         
-        let singleChannelR = MTLTextureDescriptor()
-        singleChannelR.pixelFormat = .r16Float
-        singleChannelR.textureType = .type3D
-        singleChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        singleChannelR.usage = MTLTextureUsage([.shaderRead])
         
-        let fourChannelR = MTLTextureDescriptor()
-        fourChannelR.pixelFormat = .rg16Float
-        fourChannelR.textureType = .type3D
-        fourChannelR.width = size.width; singleChannelW.height = size.height; singleChannelW.depth = size.depth
-        fourChannelR.usage = MTLTextureUsage([.shaderWrite])
-        
-        let fourChannelRW = fourChannelW
-        fourChannelRW.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        
-        Velocity = Surface(Ping: device.makeTexture(descriptor: fourChannelR)!, Pong: device.makeTexture(descriptor: fourChannelW)!)
+        Velocity = Surface(Ping: device.makeTexture(descriptor: fourChannel)!, Pong: device.makeTexture(descriptor: fourChannel)!)
         //Divergence = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        Temperature = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        Density = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        Pressure = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        Reaction = Surface(Ping: device.makeTexture(descriptor: singleChannelR)!, Pong: device.makeTexture(descriptor: singleChannelW)!)
-        Temporary3f = device.makeTexture(descriptor: fourChannelRW)!
+        Temperature = Surface(Ping: device.makeTexture(descriptor: singleChannel)!, Pong: device.makeTexture(descriptor: singleChannel)!)
+        Density = Surface(Ping: device.makeTexture(descriptor: singleChannel)!, Pong: device.makeTexture(descriptor: singleChannel)!)
+        Pressure = Surface(Ping: device.makeTexture(descriptor: singleChannel)!, Pong: device.makeTexture(descriptor: singleChannel)!)
+        Reaction = Surface(Ping: device.makeTexture(descriptor: singleChannel)!, Pong: device.makeTexture(descriptor: singleChannel)!)
+        Temporary = device.makeTexture(descriptor: fourChannel)!
         //Obstacles = device.makeTexture(descriptor: singleChannelW)!
-        Velocity.Ping.label = "Velocity Read"
-        self.Velocity.Pong.label = "Velocity Write"
+        Velocity.Ping.label = "Velocity Ping"
+        self.Velocity.Pong.label = "Velocity Pong"
         
-        self.Temperature.Ping.label = "Temperature Read"
-        self.Temperature.Pong.label = "Temperature Write"
+        self.Temperature.Ping.label = "Temperature Ping"
+        self.Temperature.Pong.label = "Temperature Pong"
         
-        self.Density.Ping.label = "Density Read"
-        self.Density.Pong.label = "Density Write"
+        self.Density.Ping.label = "Density Ping"
+        self.Density.Pong.label = "Density Pong"
         
-        self.Pressure.Ping.label = "Pressure Read"
-        self.Pressure.Pong.label = "Pressure Write"
+        self.Pressure.Ping.label = "Pressure Ping"
+        self.Pressure.Pong.label = "Pressure Pong"
         
         //self.Divergence.Ping.label = "Divergence Read"
         //self.Divergence.Pong.label = "Divergence Write"
         
-        self.Reaction.Ping.label = "Reaction Read"
-        self.Reaction.Pong.label = "Reaction Write"
+        self.Reaction.Ping.label = "Reaction Ping"
+        self.Reaction.Pong.label = "Reaction Pong"
         
-        self.Temporary3f.label = "Temporary Velocity"
+        self.Temporary.label = "Temporary 4-Channel"
     }
 }
 
-extension ResourceManager {
+struct Kernels
+{
+    var Advection : MTLComputePipelineState
+    var AdvectionR : MTLComputePipelineState
+    var Buoyancy : MTLComputePipelineState
+    var Impulse : MTLComputePipelineState
+    var Vorticity : MTLComputePipelineState
+    var Confinement : MTLComputePipelineState
+    var Divergence : MTLComputePipelineState
+    var Jacobi : MTLComputePipelineState
+    var Poisson : MTLComputePipelineState
+}
+
+class ResourceManager3D
+{
     
+    var device : MTLDevice
+    var commandQueue : MTLCommandQueue
+    
+    var kernels : Kernels
+    var fluid : Fluid3D
+    
+    init (_device: MTLDevice, dims: MTLSize) throws
+    {
+        self.device = _device
+        self.commandQueue = device.makeCommandQueue()!
+        
+        var lib = try device.makeDefaultLibrary(bundle: .main)
+        var adv3 = lib.makeFunction(name: "Advection3")
+        var imp3 = lib.makeFunction(name: "Impulse3")
+        var vort3 = lib.makeFunction(name: "Vorticity3")
+        var conf3 = lib.makeFunction(name: "Confinement3")
+        var div3 = lib.makeFunction(name: "Divergence3")
+        var jac3 = lib.makeFunction(name: "Jacobi3")
+        var pois3 = lib.makeFunction(name: "Poisson3")
+        
+        
+    }
     
     //temperature advection
     
@@ -122,4 +144,5 @@ extension ResourceManager {
     //[We in fact should NOT zero out pressure]
     
     //jacobi iteration relaxation on pressure
+    
 }
