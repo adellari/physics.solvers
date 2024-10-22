@@ -9,6 +9,7 @@ import MetalKit
 import SwiftUI
 import Metal
 
-struct Presenter : UIViewRepresentable {
-    
+struct Viewport : NSViewRepresentable {
+    var renderer : Renderer
+    var simulator : ResourceManager3D
 }

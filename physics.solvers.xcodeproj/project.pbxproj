@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E01ACB482CC7F9F7004E9D53 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01ACB472CC7F9F4004E9D53 /* Renderer.swift */; };
 		E07651C62CA06ED9007F6A79 /* physics_solversApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */; };
 		E07651C82CA06ED9007F6A79 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07651C72CA06ED9007F6A79 /* ContentView.swift */; };
 		E07651CA2CA06EDA007F6A79 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E07651C92CA06EDA007F6A79 /* Assets.xcassets */; };
@@ -20,6 +21,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		E01ACB472CC7F9F4004E9D53 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		E07651C22CA06ED9007F6A79 /* physics.solvers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = physics.solvers.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = physics_solversApp.swift; sourceTree = "<group>"; };
 		E07651C72CA06ED9007F6A79 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -64,6 +66,7 @@
 		E07651C42CA06ED9007F6A79 /* physics.solvers */ = {
 			isa = PBXGroup;
 			children = (
+				E01ACB472CC7F9F4004E9D53 /* Renderer.swift */,
 				E0BF2E9E2CABA52A00D62832 /* Extensions.swift */,
 				E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */,
 				E07651C72CA06ED9007F6A79 /* ContentView.swift */,
@@ -164,6 +167,7 @@
 				E07651C62CA06ED9007F6A79 /* physics_solversApp.swift in Sources */,
 				E088E61A2CBC801B00753F99 /* 3dFluid.metal in Sources */,
 				E07651D52CA06F2F007F6A79 /* 2dFluid.metal in Sources */,
+				E01ACB482CC7F9F7004E9D53 /* Renderer.swift in Sources */,
 				E07651D72CA0F884007F6A79 /* ResourceManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

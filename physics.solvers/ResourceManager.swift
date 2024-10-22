@@ -321,7 +321,7 @@ class ResourceManager : NSObject
  {
      guard let drawable = view.currentDrawable else { return }
      Draw()
-     
+      
      if (frames == 100)
      {
          do {

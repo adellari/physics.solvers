@@ -84,9 +84,9 @@ class Fluid3D {
 struct Kernels
 {
     var Advection : MTLComputePipelineState
-    var AdvectionR : MTLComputePipelineState
     var Buoyancy : MTLComputePipelineState
     var Impulse : MTLComputePipelineState
+    var eImpulse : MTLComputePipelineState
     var Vorticity : MTLComputePipelineState
     var Confinement : MTLComputePipelineState
     var Divergence : MTLComputePipelineState
@@ -109,14 +109,33 @@ class ResourceManager3D
         self.commandQueue = device.makeCommandQueue()!
         
         var lib = try device.makeDefaultLibrary(bundle: .main)
-        var adv3 = lib.makeFunction(name: "Advection3")
-        var imp3 = lib.makeFunction(name: "Impulse3")
-        var vort3 = lib.makeFunction(name: "Vorticity3")
-        var conf3 = lib.makeFunction(name: "Confinement3")
-        var div3 = lib.makeFunction(name: "Divergence3")
-        var jac3 = lib.makeFunction(name: "Jacobi3")
-        var pois3 = lib.makeFunction(name: "Poisson3")
+        var adv3 = lib.makeFunction(name: "Advection3")!
+        var imp3 = lib.makeFunction(name: "Impulse3")!
+        var buoy3 = lib.makeFunction(name: "Buoyancy3")!
+        var eimp3 = lib.makeFunction(name: "EImpulse3")!
+        var vort3 = lib.makeFunction(name: "Vorticity3")!
+        var conf3 = lib.makeFunction(name: "Confinement3")!
+        var div3 = lib.makeFunction(name: "Divergence3")!
+        var jac3 = lib.makeFunction(name: "Jacobi3")!
+        var pois3 = lib.makeFunction(name: "Poisson3")!
         
+        var Adv3 = try device.makeComputePipelineState(function: adv3)
+        var Imp3 = try device.makeComputePipelineState(function: imp3)
+        var Buoy3 = try device.makeComputePipelineState(function: buoy3)
+        var eImp3 = try device.makeComputePipelineState(function: eimp3)
+        var Vort3 = try device.makeComputePipelineState(function: vort3)
+        var Conf3 = try device.makeComputePipelineState(function: conf3)
+        var Div3 = try device.makeComputePipelineState(function: div3)
+        var Jac3 = try device.makeComputePipelineState(function: jac3)
+        var Pois3 = try device.makeComputePipelineState(function: pois3)
+        
+        self.kernels = Kernels(Advection: Adv3, Buoyancy: Buoy3, Impulse: Imp3, eImpulse: eImp3, Vorticity: Vort3, Confinement: Conf3, Divergence: Div3, Jacobi: Jac3, Poisson: Pois3)
+        
+        self.fluid = Fluid3D(device: self.device, size: dims)
+    }
+    
+    public func Simulate()
+    {
         
     }
     
