@@ -7,7 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 2.1f
+#define timestep 3.f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
@@ -63,11 +63,12 @@ kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(
     
     float2 newValue = dissipation * sourceSample.sample(textureSampler, texelSize * (fragCoord - timestep * currentVelocity)).xy;
     
-    if (position.x >= 511) newValue = 0.f;
-    if (position.x <= 1) newValue = 0.f;
+    ///enforce the no-stick\free-slip boundary condition (at boundaries, velocity component ⊥ surface = 0)
+    if (position.x >= 511) newValue.x = 0.f;
+    if (position.x <= 1) newValue.x = 0.f;
     
-    if (position.y >= 511) newValue = 0.f;
-    if (position.y <= 1) newValue = 0.f;
+    if (position.y >= 511) newValue.y = 0.f;
+    if (position.y <= 1) newValue.y = 0.f;
     
     sink.write(float4(newValue, newValue), position);
 }
@@ -140,11 +141,11 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     float2 uW = velocity.read(W).xy;
     
     
-    if (position.x >= 511) uE = 0.f;
-    if (position.x <= 1) uW = 0.f;
+    if (position.x >= 511) uE.x = 0.f;
+    if (position.x <= 1) uW.x = 0.f;
     
-    if (position.y >= 511) uN = 0.f;
-    if (position.y <= 1) uS = 0.f;
+    if (position.y >= 511) uN.y = 0.f;
+    if (position.y <= 1) uS.y = 0.f;
     
     
     float divergence = (0.5f /1.f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
@@ -255,7 +256,7 @@ kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[textur
     float2 textureSize = float2(tempDensityIn.get_width(), tempDensityIn.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     float4 col = tempDensityIn.sample(textureSampler, uv);
-    chain.write(float4(0, col.g, col.r, 1), position);
+    chain.write(float4(col.r, col.g, 0, 1), position);
     
 }
 
