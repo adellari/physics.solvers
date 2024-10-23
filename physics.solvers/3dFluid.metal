@@ -131,7 +131,7 @@ kernel void Confinement3(texture3d<float, access::read> VelocityIn [[texture(0)]
 }
 
 kernel void Divergence3(texture3d<float, access::read> VelocityIn [[texture(0)]], texture3d<float, access::write> DivergenceOut [[texture(1)]], const uint3 position [[thread_position_in_grid]])
-{
+{ 
     /*
     float3 dim = float3(VelocityIn.get_width(), VelocityIn.get_height(), VelocityIn.get_depth());
     float3 coord = float3(position.x, position.y, position.z);
