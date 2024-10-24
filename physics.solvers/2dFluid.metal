@@ -7,7 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 3.f
+#define timestep 4.7f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
@@ -59,9 +59,9 @@ kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(
     //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
     //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
     float2 currentVelocity = velocitySample.read(position).xy;
-    float2 newPosition = float2(position.x - timestep * currentVelocity.x, position.y + timestep * currentVelocity.y);
-    
-    float2 newValue = dissipation * sourceSample.sample(textureSampler, texelSize * (fragCoord - timestep * currentVelocity)).xy;
+    float2 newPosition = float2(position.x - timestep * currentVelocity.x, position.y - timestep * currentVelocity.y);
+    float2 newUV = texelSize * (fragCoord - timestep * currentVelocity);
+    float2 newValue = dissipation * sourceSample.sample(textureSampler, newUV).xy;
     
     ///enforce the no-stick\free-slip boundary condition (at boundaries, velocity component ⊥ surface = 0)
     if (position.x >= 511) newValue.x = 0.f;
@@ -96,7 +96,7 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
     float2 textureSize = float2(temperatureOut.get_width(), temperatureOut.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(float2(0.5, 0.15), uv);
+    float d = distance(float2(0.5, 0.45), uv);
     float impulse = 0.f;
     
     if (d < 0.1)
@@ -116,7 +116,7 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
 kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], texture2d<float, access::write> pressureOut [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
-    //constexpr sampler textureSampler(filter::nearest, address::clamp_to_zero);
+    //constexpr sampler textureSampler(filter::linear, address::clamp_to_zero);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocity.get_width(), velocity.get_height());
     //float2 texelSize = 1.f/textureSize;
@@ -135,10 +135,11 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
-    float2 uN = velocity.read(N).xy;
-    float2 uS = velocity.read(S).xy;
-    float2 uE = velocity.read(E).xy;
-    float2 uW = velocity.read(W).xy;
+    float2 uC = velocity.read(position).xy;
+    float2 uN = (velocity.read(N).xy + uC) / 2.f;
+    float2 uS = (velocity.read(S).xy + uC) / 2.f;
+    float2 uE = (velocity.read(E).xy + uC) / 2.f;
+    float2 uW = (velocity.read(W).xy + uC) / 2.f;
     
     
     if (position.x >= 511) uE.x = 0.f;
@@ -256,6 +257,7 @@ kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[textur
     float2 textureSize = float2(tempDensityIn.get_width(), tempDensityIn.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     float4 col = tempDensityIn.sample(textureSampler, uv);
+    col = abs(col);
     chain.write(float4(col.r, col.g, 0, 1), position);
     
 }
