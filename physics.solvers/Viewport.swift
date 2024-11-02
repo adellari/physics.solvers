@@ -37,7 +37,7 @@ struct Viewport : NSViewRepresentable {
             guard let drawable = view.currentDrawable else { return }
             
             simulator.Simulate()
-            renderer?.Draw()
+            renderer?.Draw(chain: drawable.texture)
             
             var chainTex = drawable.texture
             //blit the result of the renderer to chainTex

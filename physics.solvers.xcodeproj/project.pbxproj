@@ -18,6 +18,7 @@
 		E088E61C2CBC8E4B00753F99 /* ResourceManager3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = E088E61B2CBC8E4400753F99 /* ResourceManager3D.swift */; };
 		E090FA932CC30782002E5A53 /* Viewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E090FA922CC30777002E5A53 /* Viewport.swift */; };
 		E0BF2E9F2CABA53000D62832 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BF2E9E2CABA52A00D62832 /* Extensions.swift */; };
+		E0EC169A2CD5A751008430F5 /* Viewport.metal in Sources */ = {isa = PBXBuildFile; fileRef = E0EC16992CD5A74B008430F5 /* Viewport.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		E088E61B2CBC8E4400753F99 /* ResourceManager3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceManager3D.swift; sourceTree = "<group>"; };
 		E090FA922CC30777002E5A53 /* Viewport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Viewport.swift; sourceTree = "<group>"; };
 		E0BF2E9E2CABA52A00D62832 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		E0EC16992CD5A74B008430F5 /* Viewport.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Viewport.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				E01ACB472CC7F9F4004E9D53 /* Renderer.swift */,
+				E0EC16992CD5A74B008430F5 /* Viewport.metal */,
 				E0BF2E9E2CABA52A00D62832 /* Extensions.swift */,
 				E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */,
 				E07651C72CA06ED9007F6A79 /* ContentView.swift */,
@@ -169,6 +172,7 @@
 				E07651D52CA06F2F007F6A79 /* 2dFluid.metal in Sources */,
 				E01ACB482CC7F9F7004E9D53 /* Renderer.swift in Sources */,
 				E07651D72CA0F884007F6A79 /* ResourceManager.swift in Sources */,
+				E0EC169A2CD5A751008430F5 /* Viewport.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

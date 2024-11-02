@@ -149,7 +149,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     if (position.y <= 1) uS.y = 0.f;
     
     
-    float divergence = (0.5f /1.f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
+    float divergence = (0.5f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
     divergenceOut.write(float4(divergence, 0, 0, 0), position);
     //pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
 }
@@ -187,10 +187,10 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float2 W = uv + float2(-texelSize.x, 0);
     float2 E = uv + float2(texelSize.x, 0);
     */
-    uint2 N = position + uint2(0, 1);
-    uint2 S = position + uint2(0, -1);
-    uint2 W = position + uint2(-1, 0);
-    uint2 E = position + uint2(1, 0);
+    uint2 N = position + uint2(0, 2);
+    uint2 S = position + uint2(0, -2);
+    uint2 W = position + uint2(-2, 0);
+    uint2 E = position + uint2(2, 0);
 
     float pN = pressureIn.read(N).r;
     float pS = pressureIn.read(S).r;
@@ -199,14 +199,17 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float pC = pressureIn.read(position).r;
     
     
-    if (position.x >= 511) pE = pC;
-    if (position.x <= 1) pW = pC;
+    if (position.x >= 510) pE = pC;
+    if (position.x <= 2) pW = pC;
     
-    if (position.y >= 511) pN = pC;
-    if (position.y <= 1) pS = pC;
+    if (position.y >= 510) pN = pC;
+    if (position.y <= 2) pS = pC;
     
+    ///remember pressure/potential is the integral of velocity
+    ///and velocity is the gradient of pressure (potential)
+    ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
-    float prime = (pW + pE + pS + pN + (-1) * div) * 0.25f;
+    float prime = (pW + pE + pS + pN +  -4 * div) * 0.25f;
     pressureOut.write(float4(prime, prime, prime, prime), position);
     
 }
@@ -243,7 +246,7 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     
     float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
     //float2 oldVelocity = velocityIn.read(position).xy;
-    float2 pGradient = float2(pE - pW, pN - pS) * 1.f;
+    float2 pGradient = float2(pE - pW, pN - pS) * 0.5f;
     float2 velocity = oldVelocity - pGradient;
     //velocity = normalize(velocity) * texelSize;
     //velocityOut.write(float4(-1, -1, 0, 1), position);           //testing uv thread position drift
