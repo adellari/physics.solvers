@@ -8,8 +8,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    var Simulation : ResourceManager?
+    var Simulation : ResourceManager2D?
     var counter : Int = 0
+    var viewport : Viewport
     
     var body: some View {
         VStack {
@@ -17,7 +18,8 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundStyle(.tint)
             Text("Hello, world!")
-            MetalViewRepresentable(metalView: Simulation!.metalView)
+            viewport
+            //MetalViewRepresentable(metalView: Simulation!.metalView)
                 .frame(width: 512, height: 512)
             /*
             Button(action:
@@ -50,13 +52,16 @@ struct ContentView: View {
             guard let device = MTLCreateSystemDefaultDevice() else{
                 fatalError("failed to create metal device")
             }
-            Simulation = try ResourceManager(_device: device)
+            Simulation = try ResourceManager2D(_device: device)
+            let renderer = try Renderer(queue: Simulation!.commandQueue!)
+            let viewport = Viewport(renderer: renderer, simulator2d: Simulation!)
+            self.viewport = viewport
             //Simulation!.Draw()
             
         }
         catch 
         {
-            
+            fatalError("failed to create viewport components \(error)")
         }
     }
 }

@@ -123,7 +123,7 @@ class Fluid
     
 }
 
-class ResourceManager : NSObject
+class ResourceManager2D : NSObject
 {
     var device : MTLDevice?
     var commandQueue : MTLCommandQueue?
@@ -135,7 +135,7 @@ class ResourceManager : NSObject
     var divergencePipeline : MTLComputePipelineState
     var constitutionPipeline : MTLComputePipelineState
     var fluid : Fluid
-    var metalView : MTKView
+    //var metalView : MTKView
     var frames = 0
     
     let groupSize : MTLSize = MTLSize(width: 32, height: 32, depth: 1)
@@ -164,16 +164,6 @@ class ResourceManager : NSObject
         self.device = _device
         
         self.fluid = .init(device: _device)
-        self.metalView = MTKView(frame: CGRect(x:0, y:0, width:512, height:512), device: _device)
-        super.init()
-        
-        self.metalView.delegate = self
-        self.metalView.framebufferOnly = false
-        self.metalView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha:1)
-        
-        
-        //self.metalView.colorPixelFormat = .rgba8Uint
-        //self.metalView.colorPixelFormat = .rgba32Float
     }
     
     func Swap(surface : inout Fluid.Surface)
@@ -183,7 +173,7 @@ class ResourceManager : NSObject
         surface.Pong = temp
     }
     
-    func Draw()
+    func Simulate()
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
         
@@ -307,65 +297,3 @@ class ResourceManager : NSObject
     
 }
 
-
-
- extension ResourceManager: MTKViewDelegate
- {
- 
- func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize)
- {
- 
- }
- 
- func draw(in view: MTKView)
- {
-     guard let drawable = view.currentDrawable else { return }
-     Draw()
-      
-     if (frames == 100)
-     {
-         do {
-             let captureManager = MTLCaptureManager.shared()
-             let descriptor = MTLCaptureDescriptor()
-             descriptor.captureObject = self.device
-             //try captureManager.startCapture(with: descriptor)
-         }
-         catch {
-             print("failed to make capture device")
-         }
-     }
-     
-     
-     if frames == 106 {
-         //MTLCaptureManager.shared().stopCapture()
-     }
-     frames += 1
-     
-     let commandBuffer = commandQueue!.makeCommandBuffer()!
-     let blitSwapchain = commandBuffer.makeBlitCommandEncoder()!
-     let nextTexture = drawable.texture
-     let chain = fluid.chain!
-     //print(nextTexture.width, nextTexture.height)
-     blitSwapchain.copy(from: chain, to: nextTexture)
-     blitSwapchain.endEncoding()
-     commandBuffer.present(drawable)
-     commandBuffer.commit()
- }
- 
- }
- 
- 
- struct MetalViewRepresentable: NSViewRepresentable {
- 
- var metalView: MTKView
- 
- func makeNSView(context: Context) -> MTKView{
- return metalView
- }
- 
- func updateNSView(_ nsView: MTKView, context: Context)
- {
- 
- }
- }
- 

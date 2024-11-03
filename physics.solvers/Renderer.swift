@@ -29,12 +29,17 @@ class Renderer
         commandQueue = queue
         
         let lib = try device.makeDefaultLibrary(bundle: .main)
-        let traceFunc = lib.makeFunction(name: "Tracer")!
+        let traceFunc = lib.makeFunction(name: "Renderer")!
         tracer = try device.makeComputePipelineState(function: traceFunc)
-        self.camera = CameraParams(position: simd_float3(), cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4())
-        let viewportDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 1024, height: 512)
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(repeating: 0), theta: 0, phi: 0)
-        self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 1, near: 0.1, far: 1000)
+        let viewportDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 1024, height: 512, mipmapped: false)
+        viewportDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
+        self.camera = CameraParams(position: simd_float3(0, 1, 0), cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4())
+        self.viewportTexture = device.makeTexture(descriptor: viewportDesc)!
+        //phi works properly
+        //theta spins around the forward vector
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: .pi/2, phi: 0)
+        self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
     public func Draw(chain : MTLTexture) -> MTLTexture
@@ -44,9 +49,18 @@ class Renderer
         let renderEncoder = renderBuffer.makeComputeCommandEncoder()!
         renderEncoder.setComputePipelineState(tracer)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
+        renderEncoder.setTexture(self.viewportTexture, index: 0)
+        renderEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 32, height: 16, depth: 1))
+        //dispatch
+        renderEncoder.endEncoding()
+        renderBuffer.commit()
         
+        
+        return self.viewportTexture
     }
     
+    //theta is the inclination
+    //phi is the azimuth
     func Camera(eye: simd_float3, theta: Float, phi: Float) -> simd_float4x4
     {
         let sinTheta = sin(theta)
@@ -55,7 +69,7 @@ class Renderer
         let cosPhi = cos(phi)
         
         let xAxis = simd_float3(cosPhi, 0, -sinPhi)
-        let yAxis = simd_float3(cosPhi * sinTheta, cosTheta, cosPhi * sinTheta)
+        let yAxis = simd_float3(sinPhi * sinTheta, cosTheta, cosPhi * sinTheta)
         let zAxis = simd_float3(sinPhi * cosTheta, -sinTheta, cosTheta * cosPhi);
         
         let camMatrix = simd_float4x4(simd_float4(xAxis.x, yAxis.x, zAxis.x, 0),
@@ -80,8 +94,8 @@ class Renderer
         let m32 = 2 * zNear * far / zRange
 
         let rotationMatrix = simd_float4x4(
-                simd_float4(0, -1, 0, 0),
                 simd_float4(1, 0, 0, 0),
+                simd_float4(0, 1, 0, 0),
                 simd_float4(0, 0, 1, 0),
                 simd_float4(0, 0, 0, 1)
             )
@@ -90,7 +104,7 @@ class Renderer
         return float4x4([simd_float4(m00, 0, 0, 0),
                         simd_float4(0, m11, 0, 0),
                         simd_float4(0, 0, m22, -1),
-                        simd_float4(0, 0, m32, 0)])
+                        simd_float4(0, 0, m32, 0)]) * rotationMatrix
         
         
     }

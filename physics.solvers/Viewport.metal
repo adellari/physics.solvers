@@ -74,14 +74,18 @@ void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], constant Camera& camera [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
     const ushort2 textureSize = ushort2(output.get_width(), output.get_height());
-    const float2 coord = float2(position.x / textureSize.x, position.y / textureSize.y);
+    const float2 coord = float2((float)position.x / (float)textureSize.x, (float)position.y / (float)textureSize.y);
     const float2 uv = coord * 2.f - 1.f;
     
     float4 col = float4();
     
     Ray ray = CreateCameraRay(uv, camera);
     RayHit hit = CreateRayhit();
-    
+
+    col = float4(ray.direction, 1.f);
     IntersectGroundPlane(ray, &hit);
+    //if (hit.distance < INFINITY)
+        //col = float4(hit.normal, 1.f);
+    
     output.write(col, position);
 }
