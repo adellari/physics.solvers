@@ -12,10 +12,16 @@ class Renderer
     var device : MTLDevice
     var commandQueue : MTLCommandQueue
     var tracer : MTLComputePipelineState
+    var viewportTexture : MTLTexture
     var chain : (MTLTexture, MTLTexture)?
     var fluidTexture : MTLTexture?
-    var cameraMatrix : simd_float4x4 = float4x4()
-    var projectionMatrix : simd_float4x4 = float4x4()
+    var camera : CameraParams
+    
+    struct CameraParams {
+        var position : simd_float3;
+        var cameraMatrix : simd_float4x4;
+        var projectionMatrix : simd_float4x4;
+    }
     
     init (queue : MTLCommandQueue) throws
     {
@@ -25,13 +31,19 @@ class Renderer
         let lib = try device.makeDefaultLibrary(bundle: .main)
         let traceFunc = lib.makeFunction(name: "Tracer")!
         tracer = try device.makeComputePipelineState(function: traceFunc)
-        self.projectionMatrix = Projection(fov: 60, aspect: 1, near: 0.1, far: 1000)
-        self.cameraMatrix = Camera(eye: simd_float3(repeating: 0), theta: 0, phi: 0)
+        self.camera = CameraParams(position: simd_float3(), cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4())
+        let viewportDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 1024, height: 512)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(repeating: 0), theta: 0, phi: 0)
+        self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 1, near: 0.1, far: 1000)
     }
     
     public func Draw(chain : MTLTexture) -> MTLTexture
     {
         //draw the scene from the resultant 3d velocity texture
+        let renderBuffer = commandQueue.makeCommandBuffer()!
+        let renderEncoder = renderBuffer.makeComputeCommandEncoder()!
+        renderEncoder.setComputePipelineState(tracer)
+        renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         
     }
     
@@ -54,7 +66,7 @@ class Renderer
     }
     
     func Projection(fov: Float, aspect: Float, near: Float, far: Float) -> float4x4{
-        var rFov = fov * (.pi / 180.0)
+        let rFov = fov * (.pi / 180.0)
         let y = 1.0 / tan(rFov / 2.0)
         let x = y / aspect
         

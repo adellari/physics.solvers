@@ -28,6 +28,16 @@ struct RayHit
     float distance;
 };
 
+RayHit CreateRayhit()
+{
+    RayHit rh = RayHit();
+    rh.distance = INFINITY;
+    rh.normal = float3();
+    rh.position = float3();
+    
+    return rh;
+}
+
 Ray CreateRay(float3 origin, float3 direction)
 {
     Ray r = Ray();
@@ -37,15 +47,41 @@ Ray CreateRay(float3 origin, float3 direction)
     return r;
 }
 
-Ray CreateCameraRay()
+Ray CreateCameraRay(float2 uv, constant Camera& cam)
 {
     Ray r = Ray();
+    float3 origin = (float4(cam.position, 1) * cam.worldToCamera).xyz;
+    float3 dir = (float4(uv, 0, 1) * cam.projection).xyz;
+    
+    dir = normalize((float4(dir, 0) * cam.worldToCamera).xyz);
+    r = CreateRay(origin, dir);
     
     return r;
 }
 
-
-kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], constant Camera& camera [[buffer(0)]], const uint3 position [[thread_position_in_grid]])
+void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 {
+    float t = -ray.origin.y / ray.direction.y;
     
+    if (t < hit->distance && t > 0.f)
+    {
+        hit->normal = float3(0.f, 1.f, 0.f);
+        hit->distance = t;
+    }
+}
+
+
+kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], constant Camera& camera [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
+{
+    const ushort2 textureSize = ushort2(output.get_width(), output.get_height());
+    const float2 coord = float2(position.x / textureSize.x, position.y / textureSize.y);
+    const float2 uv = coord * 2.f - 1.f;
+    
+    float4 col = float4();
+    
+    Ray ray = CreateCameraRay(uv, camera);
+    RayHit hit = CreateRayhit();
+    
+    IntersectGroundPlane(ray, &hit);
+    output.write(col, position);
 }

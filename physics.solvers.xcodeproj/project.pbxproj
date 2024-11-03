@@ -17,7 +17,6 @@
 		E088E61A2CBC801B00753F99 /* 3dFluid.metal in Sources */ = {isa = PBXBuildFile; fileRef = E088E6192CBC800E00753F99 /* 3dFluid.metal */; };
 		E088E61C2CBC8E4B00753F99 /* ResourceManager3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = E088E61B2CBC8E4400753F99 /* ResourceManager3D.swift */; };
 		E090FA932CC30782002E5A53 /* Viewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E090FA922CC30777002E5A53 /* Viewport.swift */; };
-		E0BF2E9F2CABA53000D62832 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BF2E9E2CABA52A00D62832 /* Extensions.swift */; };
 		E0EC169A2CD5A751008430F5 /* Viewport.metal in Sources */ = {isa = PBXBuildFile; fileRef = E0EC16992CD5A74B008430F5 /* Viewport.metal */; };
 /* End PBXBuildFile section */
 
@@ -34,7 +33,6 @@
 		E088E6192CBC800E00753F99 /* 3dFluid.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = 3dFluid.metal; sourceTree = "<group>"; };
 		E088E61B2CBC8E4400753F99 /* ResourceManager3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceManager3D.swift; sourceTree = "<group>"; };
 		E090FA922CC30777002E5A53 /* Viewport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Viewport.swift; sourceTree = "<group>"; };
-		E0BF2E9E2CABA52A00D62832 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		E0EC16992CD5A74B008430F5 /* Viewport.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Viewport.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -70,7 +68,6 @@
 			children = (
 				E01ACB472CC7F9F4004E9D53 /* Renderer.swift */,
 				E0EC16992CD5A74B008430F5 /* Viewport.metal */,
-				E0BF2E9E2CABA52A00D62832 /* Extensions.swift */,
 				E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */,
 				E07651C72CA06ED9007F6A79 /* ContentView.swift */,
 				E07651C92CA06EDA007F6A79 /* Assets.xcassets */,
@@ -163,7 +160,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E0BF2E9F2CABA53000D62832 /* Extensions.swift in Sources */,
 				E07651C82CA06ED9007F6A79 /* ContentView.swift in Sources */,
 				E090FA932CC30782002E5A53 /* Viewport.swift in Sources */,
 				E088E61C2CBC8E4B00753F99 /* ResourceManager3D.swift in Sources */,
