@@ -40,18 +40,22 @@ struct Viewport : NSViewRepresentable {
             guard let drawable = view.currentDrawable else { return }
             
             simulator2d.Simulate()
-            var render = (renderer?.Draw(chain: drawable.texture))!
-            print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
-            /*
-            let cmd = commandQueue.makeCommandBuffer()!
-            let blitEncoder = cmd.makeBlitCommandEncoder()!
-            blitEncoder.copy(from: render, to: drawable.texture)
-            blitEncoder.endEncoding()
-            cmd.commit()
-             */
+            let render = renderer?.Draw()
+            //print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
+            
+            if (render != nil)
+            {
+                let cmd = commandQueue.makeCommandBuffer()!
+                let blitEncoder = cmd.makeBlitCommandEncoder()!
+                blitEncoder.copy(from: render!, to: drawable.texture)
+                blitEncoder.endEncoding()
+                cmd.commit()
+            }
+            
+             
             drawable.present()
             
-            MTLCaptureManager.shared().stopCapture()
+            //MTLCaptureManager.shared().stopCapture()
             //blit the result of the renderer to chainTex
         }
     }
@@ -64,8 +68,8 @@ struct Viewport : NSViewRepresentable {
         view.framebufferOnly = false
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         view.frame = CGRect(x: 0, y: 0, width: 1024, height: 512)
-        
-        
+        renderer!.CreateChain(format: view.colorPixelFormat)
+        /*
         let captureManager = MTLCaptureManager.shared()
         let capDesc = MTLCaptureDescriptor()
         capDesc.captureObject = simulator2d.device
@@ -76,7 +80,7 @@ struct Viewport : NSViewRepresentable {
         catch {
             fatalError("Failed to start Metal capture: \(error)")
         }
-        
+        */
         return view
     }
     

@@ -13,7 +13,7 @@ class Renderer
     var commandQueue : MTLCommandQueue
     var tracer : MTLComputePipelineState
     var viewportTexture : MTLTexture
-    var chain : (MTLTexture, MTLTexture)?
+    var chain : (Ping : MTLTexture, Pong : MTLTexture)?
     var fluidTexture : MTLTexture?
     var camera : CameraParams
     
@@ -45,10 +45,11 @@ class Renderer
     public func CreateChain(format : MTLPixelFormat)
     {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: self.viewportTexture.width, height: self.viewportTexture.height, mipmapped: false)
+        descriptor.usage = .shaderWrite
         self.chain = (device.makeTexture(descriptor: descriptor)!, device.makeTexture(descriptor: descriptor)!)
     }
     
-    public func Draw(chain : MTLTexture) -> MTLTexture
+    public func Draw() -> MTLTexture?
     {
         //draw the scene from the resultant 3d velocity texture
         let renderBuffer = commandQueue.makeCommandBuffer()!
@@ -56,13 +57,14 @@ class Renderer
         renderEncoder.setComputePipelineState(tracer)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         renderEncoder.setTexture(self.viewportTexture, index: 0)
+        if (self.chain?.Ping != nil) {renderEncoder.setTexture(self.chain!.Ping, index: 1)}
         renderEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 32, height: 16, depth: 1))
         //dispatch
         renderEncoder.endEncoding()
         renderBuffer.commit()
         
         
-        return self.viewportTexture
+        return self.chain?.Ping
     }
     
     //theta is the inclination
