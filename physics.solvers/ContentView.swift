@@ -18,25 +18,10 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundStyle(.tint)
             Text("Hello, world!")
+            //guess the frame has to be 1/2 of the actual drawable
+            //at least on the laptop screen
             viewport
-            //MetalViewRepresentable(metalView: Simulation!.metalView)
-                .frame(width: 512, height: 512)
-            /*
-            Button(action:
-            {
-                //Simulation!.Draw()
-                
-                Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { _ in
-                    Simulation!.Draw()
-                    //counter = counter.advanced(by: 1)
-                    
-                }
-                
-            })
-            {
-                Image(systemName: "eye")
-            }
-            */
+                .frame(width: 512, height: 256)
         }
         .onAppear()
         {

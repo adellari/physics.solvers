@@ -42,6 +42,12 @@ class Renderer
         self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
+    public func CreateChain(format : MTLPixelFormat)
+    {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: self.viewportTexture.width, height: self.viewportTexture.height, mipmapped: false)
+        self.chain = (device.makeTexture(descriptor: descriptor)!, device.makeTexture(descriptor: descriptor)!)
+    }
+    
     public func Draw(chain : MTLTexture) -> MTLTexture
     {
         //draw the scene from the resultant 3d velocity texture
@@ -87,24 +93,23 @@ class Renderer
         let zRange = far - near
         let zNear = near
         
-        let m00 = -x
-        let m11 = -y
+        let m00 = x
+        let m11 = y
         let m22 = (far + near) / zRange
-        let m23 = -1
         let m32 = 2 * zNear * far / zRange
 
         let rotationMatrix = simd_float4x4(
                 simd_float4(1, 0, 0, 0),
-                simd_float4(0, 1, 0, 0),
                 simd_float4(0, 0, 1, 0),
-                simd_float4(0, 0, 0, 1)
+                simd_float4(0, 1, 0, 1),
+                simd_float4(1, 1, 1, 1)
             )
         
         
         return float4x4([simd_float4(m00, 0, 0, 0),
                         simd_float4(0, m11, 0, 0),
                         simd_float4(0, 0, m22, -1),
-                        simd_float4(0, 0, m32, 0)]) * rotationMatrix
+                        simd_float4(0, 0, m32, 0)])
         
         
     }

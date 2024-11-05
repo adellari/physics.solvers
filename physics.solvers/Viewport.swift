@@ -40,9 +40,15 @@ struct Viewport : NSViewRepresentable {
             guard let drawable = view.currentDrawable else { return }
             
             simulator2d.Simulate()
-            renderer?.Draw(chain: drawable.texture)
-            
-            var chainTex = drawable.texture
+            var render = (renderer?.Draw(chain: drawable.texture))!
+            print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
+            /*
+            let cmd = commandQueue.makeCommandBuffer()!
+            let blitEncoder = cmd.makeBlitCommandEncoder()!
+            blitEncoder.copy(from: render, to: drawable.texture)
+            blitEncoder.endEncoding()
+            cmd.commit()
+             */
             drawable.present()
             
             MTLCaptureManager.shared().stopCapture()

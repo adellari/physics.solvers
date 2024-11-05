@@ -53,7 +53,7 @@ Ray CreateCameraRay(float2 uv, constant Camera& cam)
     float3 origin = (float4(cam.position, 1) * cam.worldToCamera).xyz;
     float3 dir = (float4(uv, 0, 1) * cam.projection).xyz;
     
-    dir = normalize((float4(dir, 0) * cam.worldToCamera).xyz);
+    dir = normalize((float4(dir, 0) * cam.worldToCamera).xzy);
     r = CreateRay(origin, dir);
     
     return r;
@@ -71,7 +71,7 @@ void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 }
 
 
-kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], constant Camera& camera [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
+kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], texture2d<float, access::write> chain [[texture(1)]], constant Camera& camera [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
     const ushort2 textureSize = ushort2(output.get_width(), output.get_height());
     const float2 coord = float2((float)position.x / (float)textureSize.x, (float)position.y / (float)textureSize.y);
