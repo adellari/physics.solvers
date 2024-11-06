@@ -11,17 +11,26 @@ struct ContentView: View {
     var Simulation : ResourceManager2D?
     var counter : Int = 0
     var viewport : Viewport
+    @State var horizontalValue : Double = 0.0
+    @State var verticalValue : Double = 0.0
     
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
             Text("Hello, world!")
             //guess the frame has to be 1/2 of the actual drawable
             //at least on the laptop screen
             viewport
                 .frame(width: 512, height: 256)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            viewport.renderer!.azimuth += value.velocity.width * 0.01
+                            //viewport.renderer!.elevation += value.velocity.height * 0.01
+                        }
+                )
+            Slider(value: $horizontalValue, in: 0...Double.pi, onEditingChanged: { _ in
+                viewport.renderer!.azimuth = horizontalValue
+            })
         }
         .onAppear()
         {

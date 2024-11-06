@@ -16,6 +16,8 @@ class Renderer
     var chain : (Ping : MTLTexture, Pong : MTLTexture)?
     var fluidTexture : MTLTexture?
     var camera : CameraParams
+    var azimuth : Double = 0.0
+    var elevation : Double = 0.0
     
     struct CameraParams {
         var position : simd_float3;
@@ -38,7 +40,7 @@ class Renderer
         self.viewportTexture = device.makeTexture(descriptor: viewportDesc)!
         //phi works properly
         //theta spins around the forward vector
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: .pi/2, phi: 0)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2)
         self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
@@ -55,6 +57,7 @@ class Renderer
         let renderBuffer = commandQueue.makeCommandBuffer()!
         let renderEncoder = renderBuffer.makeComputeCommandEncoder()!
         renderEncoder.setComputePipelineState(tracer)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: 0)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         renderEncoder.setTexture(self.viewportTexture, index: 0)
         if (self.chain?.Ping != nil) {renderEncoder.setTexture(self.chain!.Ping, index: 1)}
@@ -67,19 +70,57 @@ class Renderer
         return self.chain?.Ping
     }
     
-    //theta is the inclination
-    //phi is the azimuth
+    //theta = inclination with range [-π/2, π/2] where 0 is the equator
+    //phi = azimuth with range [0, 2π]
+    //this is a view matrix
+    ///Typically this is constructed from origin and forward vectors provided
+    ///since we're working in spherical coordinates, we must calculate the forward vector using
+    ///spherical to cartesian conversion.
+    ///
+    ///x=rsin(θ)cos(ϕ)
+    ///y=rsin(θ)sin(ϕ)
+    ///z=rcos(θ)
+    ///https://www.3dgep.com/understanding-the-view-matrix/#:~:text=model%20might%20look-,like%20this%3A,-FPS%20camera%2C%20right
     func Camera(eye: simd_float3, theta: Float, phi: Float) -> simd_float4x4
     {
+        /*
+         // Pitch must be in the range of [-90 ... 90] degrees and
+         // yaw must be in the range of [0 ... 360] degrees.
+         // Pitch and yaw variables must be expressed in radians.
+         mat4 FPSViewRH( vec3 eye, float pitch, float yaw )
+         {
+             // I assume the values are already converted to radians.
+             float cosPitch = cos(pitch);
+             float sinPitch = sin(pitch);
+             float cosYaw = cos(yaw);
+             float sinYaw = sin(yaw);
+
+             vec3 xaxis = { cosYaw, 0, -sinYaw };
+             vec3 yaxis = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
+             vec3 zaxis = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
+
+             // Create a 4x4 view matrix from the right, up, forward and eye position vectors
+             mat4 viewMatrix = {
+                 vec4(       xaxis.x,            yaxis.x,            zaxis.x,      0 ),
+                 vec4(       xaxis.y,            yaxis.y,            zaxis.y,      0 ),
+                 vec4(       xaxis.z,            yaxis.z,            zaxis.z,      0 ),
+                 vec4( -dot( xaxis, eye ), -dot( yaxis, eye ), -dot( zaxis, eye ), 1 )
+             };
+             
+             return viewMatrix;
+         }
+         
+         */
+        
         let sinTheta = sin(theta)
-        let cosTheta = cos(theta)
         let sinPhi = sin(phi)
+        let cosTheta = cos(theta)
         let cosPhi = cos(phi)
         
         let xAxis = simd_float3(cosPhi, 0, -sinPhi)
         let yAxis = simd_float3(sinPhi * sinTheta, cosTheta, cosPhi * sinTheta)
-        let zAxis = simd_float3(sinPhi * cosTheta, -sinTheta, cosTheta * cosPhi);
-        
+        let zAxis = simd_float3(sinPhi * cosTheta, -sinTheta, cosTheta * cosPhi)
+    
         let camMatrix = simd_float4x4(simd_float4(xAxis.x, yAxis.x, zAxis.x, 0),
                                       simd_float4(xAxis.y, yAxis.y, zAxis.y, 0),
                                       simd_float4(xAxis.z, yAxis.z, zAxis.z, 0),

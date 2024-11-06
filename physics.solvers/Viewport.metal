@@ -53,7 +53,7 @@ Ray CreateCameraRay(float2 uv, constant Camera& cam)
     float3 origin = (float4(cam.position, 1) * cam.worldToCamera).xyz;
     float3 dir = (float4(uv, 0, 1) * cam.projection).xyz;
     
-    dir = normalize((float4(dir, 0) * cam.worldToCamera).xzy);
+    dir = normalize((float4(dir, 0) * cam.worldToCamera).xyz);
     r = CreateRay(origin, dir);
     
     return r;
@@ -86,6 +86,6 @@ kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], text
     IntersectGroundPlane(ray, &hit);
     //if (hit.distance < INFINITY)
         //col = float4(hit.normal, 1.f);
-    chain.write(col, position);
+    chain.write(abs(col), position);
     output.write(col, position);
 }
