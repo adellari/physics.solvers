@@ -40,7 +40,7 @@ class Renderer
         self.viewportTexture = device.makeTexture(descriptor: viewportDesc)!
         //phi works properly
         //theta spins around the forward vector
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: Float(self.azimuth) + .pi/2)
         self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
@@ -58,7 +58,7 @@ class Renderer
         let renderEncoder = renderBuffer.makeComputeCommandEncoder()!
         renderEncoder.setComputePipelineState(tracer)
         //we always add π to phi, in addition to negating x, and y axis to swap to left handed basis
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2 + .pi)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: Float(self.elevation), phi: Float(self.azimuth) + .pi)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         renderEncoder.setTexture(self.viewportTexture, index: 0)
         if (self.chain?.Ping != nil) {renderEncoder.setTexture(self.chain!.Ping, index: 1)}

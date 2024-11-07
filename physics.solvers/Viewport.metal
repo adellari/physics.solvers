@@ -84,8 +84,8 @@ kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], text
 
     col = float4(ray.direction, 1.f);
     IntersectGroundPlane(ray, &hit);
-    //if (hit.distance < INFINITY)
-        //col = float4(hit.normal, 1.f);
+    if (hit.distance < INFINITY)
+        col = float4(hit.normal, 1.f);
     chain.write(abs(col), position);
     output.write(col, position);
 }

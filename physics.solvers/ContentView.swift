@@ -21,16 +21,22 @@ struct ContentView: View {
             //at least on the laptop screen
             viewport
                 .frame(width: 512, height: 256)
+            //Swift frames and Metal textures are 0,0 in the top left
+            //so scrolling down, to the right gives positive velocity
+            //as a result, we negate y velocity due to the nature of our
+            //view matrix elevation, theta basis
                 .gesture(
                     DragGesture()
                         .onChanged { value in
                             viewport.renderer!.azimuth += value.velocity.width * 0.01
-                            //viewport.renderer!.elevation += value.velocity.height * 0.01
+                            //print("\(value.velocity.height * 0.01)")
+                            viewport.renderer!.elevation += value.velocity.height * -0.01
                         }
                 )
+            /*
             Slider(value: $horizontalValue, in: 0...Double.pi, onEditingChanged: { _ in
                 viewport.renderer!.azimuth = horizontalValue
-            })
+            })*/
         }
         .onAppear()
         {
