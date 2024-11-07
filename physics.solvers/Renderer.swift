@@ -20,9 +20,9 @@ class Renderer
     var elevation : Double = 0.0
     
     struct CameraParams {
-        var position : simd_float3;
         var cameraMatrix : simd_float4x4;
         var projectionMatrix : simd_float4x4;
+        var position : simd_float3;
     }
     
     init (queue : MTLCommandQueue) throws
@@ -36,11 +36,11 @@ class Renderer
         let viewportDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 1024, height: 512, mipmapped: false)
         viewportDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
         
-        self.camera = CameraParams(position: simd_float3(0, 1, 0), cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4())
+        self.camera = CameraParams(cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4(), position: simd_float3(0, 1, 0))
         self.viewportTexture = device.makeTexture(descriptor: viewportDesc)!
         //phi works properly
         //theta spins around the forward vector
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: 0)
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2)
         self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
@@ -57,7 +57,8 @@ class Renderer
         let renderBuffer = commandQueue.makeCommandBuffer()!
         let renderEncoder = renderBuffer.makeComputeCommandEncoder()!
         renderEncoder.setComputePipelineState(tracer)
-        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2)
+        //we always add π to phi, in addition to negating x, and y axis to swap to left handed basis
+        self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: 0, phi: .pi/2 + .pi)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         renderEncoder.setTexture(self.viewportTexture, index: 0)
         if (self.chain?.Ping != nil) {renderEncoder.setTexture(self.chain!.Ping, index: 1)}
@@ -80,33 +81,31 @@ class Renderer
     ///x=rsin(θ)cos(ϕ)
     ///y=rsin(θ)sin(ϕ)
     ///z=rcos(θ)
+    //couldn't get this basis creation with lin algebra working, now using trigonometry:
+    ///This is a right-handed system, we shift phi by π and negate x and y
+    ///in the camera projection matrix, to get to a left handed system
+    ///where phi is rotation around basis y, from [0, 2π]
+    ///and theta is rotation around basis x, from [-π/2, π/2]
+    ///theta = 0, phi = 0 (+π conversion) is left-hand system forward vector
+    ///theta = π/2, phi = 0 (+π conversion) is the left-hand system up vector
+    ///theta = 0, phi = π/2 (+π conversion) is the left-hand system right vector
+    ///https://www.3dgep.com/understanding-the-view-matrix/#:~:text=model%20might%20look-,like%20this%3A,-FPS%20camera%2C%20right
     func Camera(eye: simd_float3, theta: Float, phi: Float) -> simd_float4x4
     {
         
+        let sinTheta = sin(theta)
+        let sinPhi = sin(phi)
+        let cosTheta = cos(theta)
+        let cosPhi = cos(phi)
+        
+        let xAxis = simd_float3(cosPhi, 0, -sinPhi)
+        let yAxis = simd_float3(sinPhi * sinTheta, cosTheta, cosPhi * sinTheta)
+        let zAxis = simd_float3(sinPhi * cosTheta, -sinTheta, cosTheta * cosPhi)
     
-        let forward = simd_float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta))
-        
-        var helper = simd_float3(0, 1, 0) //check to see if this isn't aligned with forward
-        var right = simd_float3(0)
-        var up = simd_float3(0)
-        if (abs(forward.y) > 0.99)
-        {
-            helper = simd_float3(1, 0, 0)
-            up = normalize(cross(helper, forward))
-            right = normalize(cross(forward, up))
-        }
-        else{
-            right = normalize(cross(helper, forward))
-            up = normalize(cross(forward, right))
-        }
-            
-        
-        
-        
-        let camMatrix = simd_float4x4(simd_float4(right.x, up.x, forward.x, 0),
-                                      simd_float4(right.y, up.y, forward.y, 0),
-                                      simd_float4(right.z, up.z, forward.z, 0),
-                                      simd_float4(-dot(right, eye), -dot(up, eye), -dot(forward, eye), 1));
+        let camMatrix = simd_float4x4(simd_float4(xAxis.x, yAxis.x, zAxis.x, 0),
+                                      simd_float4(xAxis.y, yAxis.y, zAxis.y, 0),
+                                      simd_float4(xAxis.z, yAxis.z, zAxis.z, 0),
+                                      simd_float4(-dot(xAxis, eye), -dot(yAxis, eye), -dot(zAxis, eye), 1));
         return camMatrix;
     }
     
@@ -118,8 +117,8 @@ class Renderer
         let zRange = far - near
         let zNear = near
         
-        let m00 = x
-        let m11 = y
+        let m00 = -x
+        let m11 = -y
         let m22 = (far + near) / zRange
         let m32 = 2 * zNear * far / zRange
 
