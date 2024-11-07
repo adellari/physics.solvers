@@ -61,12 +61,13 @@ Ray CreateCameraRay(float2 uv, constant Camera& cam)
 
 void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 {
-    float t = -ray.origin.y / ray.direction.y;
+    float t = 0.01f -ray.origin.y / ray.direction.y;
     
     if (t < hit->distance && t > 0.f)
     {
         hit->normal = float3(0.f, 1.f, 0.f);
         hit->distance = t;
+        hit->position = ray.direction * t + ray.origin;
     }
 }
 
@@ -74,18 +75,27 @@ void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], texture2d<float, access::write> chain [[texture(1)]], constant Camera& camera [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
     const ushort2 textureSize = ushort2(output.get_width(), output.get_height());
+    const float2 texel = float2(1.f/(float)textureSize.x, 1.f/(float)textureSize.y);
     const float2 coord = float2((float)position.x / (float)textureSize.x, (float)position.y / (float)textureSize.y);
     const float2 uv = coord * 2.f - 1.f;
     
     float4 col = float4();
     
     Ray ray = CreateCameraRay(uv, camera);
+    Ray raydx = CreateCameraRay(uv + float2(texel.x, 0), camera);
+    Ray raydy = CreateCameraRay(uv + float2(0, texel.y), camera);
     RayHit hit = CreateRayhit();
-
+    ///we have dfdx and dfdy in metal
+    
     col = float4(ray.direction, 1.f);
     IntersectGroundPlane(ray, &hit);
-    if (hit.distance < INFINITY)
-        col = float4(hit.normal, 1.f);
+    if (hit.distance < INFINITY){
+        float2 floored = floor(hit.position.xz * 12.f);
+        float mod = 2.f;
+        float pat = fmod(floored.x + floored.y, 2.f);
+        col = float4(pat, pat, pat, 1.f);
+    }
+        
     chain.write(abs(col), position);
     output.write(col, position);
 }

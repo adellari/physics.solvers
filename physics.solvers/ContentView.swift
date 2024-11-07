@@ -28,9 +28,9 @@ struct ContentView: View {
                 .gesture(
                     DragGesture()
                         .onChanged { value in
-                            viewport.renderer!.azimuth += value.velocity.width * 0.01
+                            viewport.renderer!.azimuth += value.velocity.width * 0.001
                             //print("\(value.velocity.height * 0.01)")
-                            viewport.renderer!.elevation += value.velocity.height * -0.01
+                            viewport.renderer!.elevation += value.velocity.height * -0.001
                         }
                 )
             /*
