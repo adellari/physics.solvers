@@ -36,7 +36,7 @@ class Renderer
         let viewportDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: 1024, height: 512, mipmapped: false)
         viewportDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
         
-        self.camera = CameraParams(cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4(), position: simd_float3(0, 1, 0))
+        self.camera = CameraParams(cameraMatrix: simd_float4x4(), projectionMatrix: simd_float4x4(), position: simd_float3(0, 2.5, 0))
         self.viewportTexture = device.makeTexture(descriptor: viewportDesc)!
         //phi works properly
         //theta spins around the forward vector

@@ -89,13 +89,41 @@ kernel void Renderer(texture2d<float, access::write> output [[texture(0)]], text
     
     col = float4(ray.direction, 1.f);
     IntersectGroundPlane(ray, &hit);
+    
+    
+    //unfiltered checkerboard
+    /*
     if (hit.distance < INFINITY){
         float2 floored = floor(hit.position.xz * 12.f);
-        float mod = 2.f;
         float pat = fmod(floored.x + floored.y, 2.f);
         col = float4(pat, pat, pat, 1.f);
     }
+     */
+    
+    //filtered checkerboard
+    if (hit.distance < INFINITY)
+    {
+        float3 ddx_pos = (raydx.origin - raydx.direction) * dot(raydx.origin - hit.position, hit.normal) / dot(raydx.direction, hit.normal);
+        float3 ddy_pos = (raydy.origin - raydy.direction) * dot(raydy.origin - hit.position, hit.normal) / dot(raydy.direction, hit.normal);
         
+        float2 guv = hit.position.xz * 12.f;
+        float2 guvdx = ddx_pos.xz * 12.f - guv;
+        float2 guvdy = ddy_pos.xz * 12.f - guv;
+        
+        float2 w = max(abs(guvdx), abs(guvdy)) + 0.01;
+        float2 i = 2.f * (abs(fract( (guv-0.5*w)/2.f ) - 0.5) -abs(fract( (guv+0.5*w)/2.f ) - 0.5f)) / w;
+        float pat = 0.5 - 0.5 * i.x * i.y;
+        col = float4(pat, pat, pat, 1.f);
+        /*
+         vec2 w = max(abs(ddx), abs(ddy)) + 0.01;
+             // analytical integral (box filter)
+             vec2 i = 2.0*(abs(fract((p-0.5*w)/2.0)-0.5)-abs(fract((p+0.5*w)/2.0)-0.5))/w;
+             // xor pattern
+             return 0.5 - 0.5*i.x*i.y;
+         */
+    }
+    
+    
     chain.write(abs(col), position);
     output.write(col, position);
 }
