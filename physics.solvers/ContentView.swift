@@ -53,8 +53,9 @@ struct ContentView: View {
                 fatalError("failed to create metal device")
             }
             Simulation = try ResourceManager2D(_device: device)
+            let sdf = try MeshSDF(_device: device, sharedQueue: Simulation!.commandQueue!)
             let renderer = try Renderer(queue: Simulation!.commandQueue!)
-            let viewport = Viewport(renderer: renderer, simulator2d: Simulation!)
+            let viewport = Viewport(renderer: renderer, sdf: sdf, simulator2d: Simulation!)
             self.viewport = viewport
             //Simulation!.Draw()
             

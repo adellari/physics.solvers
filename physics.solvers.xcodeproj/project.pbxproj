@@ -9,6 +9,16 @@
 /* Begin PBXBuildFile section */
 		E01ACB482CC7F9F7004E9D53 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01ACB472CC7F9F4004E9D53 /* Renderer.swift */; };
 		E075F6E92CDE6C8C00F74BA5 /* SdfKernels.metal in Sources */ = {isa = PBXBuildFile; fileRef = E075F6E82CDE6C7300F74BA5 /* SdfKernels.metal */; };
+		E075F6ED2CDE703000F74BA5 /* GLTFKit2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E075F6EA2CDE6FF700F74BA5 /* GLTFKit2.framework */; };
+		E075F6EE2CDE703000F74BA5 /* GLTFKit2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E075F6EA2CDE6FF700F74BA5 /* GLTFKit2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E075F6F22CDE708600F74BA5 /* ModelImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E075F6F12CDE708100F74BA5 /* ModelImporter.swift */; };
+		E075F6F62CDE711B00F74BA5 /* MeshSDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = E075F6F52CDE711B00F74BA5 /* MeshSDF.swift */; };
+		E075F6FF2CDE741C00F74BA5 /* Medical_Hand_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = E075F6F92CDE741C00F74BA5 /* Medical_Hand_normal.png */; };
+		E075F7002CDE741C00F74BA5 /* scene.bin in Resources */ = {isa = PBXBuildFile; fileRef = E075F6FC2CDE741C00F74BA5 /* scene.bin */; };
+		E075F7012CDE741C00F74BA5 /* Medical_Hand_metallicRoughness.png in Resources */ = {isa = PBXBuildFile; fileRef = E075F6F82CDE741C00F74BA5 /* Medical_Hand_metallicRoughness.png */; };
+		E075F7022CDE741C00F74BA5 /* Medical_Hand_baseColor.jpeg in Resources */ = {isa = PBXBuildFile; fileRef = E075F6F72CDE741C00F74BA5 /* Medical_Hand_baseColor.jpeg */; };
+		E075F7032CDE741C00F74BA5 /* scene.gltf in Resources */ = {isa = PBXBuildFile; fileRef = E075F6FD2CDE741C00F74BA5 /* scene.gltf */; };
+		E075F7042CDE741C00F74BA5 /* license.txt in Resources */ = {isa = PBXBuildFile; fileRef = E075F6FB2CDE741C00F74BA5 /* license.txt */; };
 		E07651C62CA06ED9007F6A79 /* physics_solversApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */; };
 		E07651C82CA06ED9007F6A79 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07651C72CA06ED9007F6A79 /* ContentView.swift */; };
 		E07651CA2CA06EDA007F6A79 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E07651C92CA06EDA007F6A79 /* Assets.xcassets */; };
@@ -21,9 +31,32 @@
 		E0EC169A2CD5A751008430F5 /* Viewport.metal in Sources */ = {isa = PBXBuildFile; fileRef = E0EC16992CD5A74B008430F5 /* Viewport.metal */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		E075F6EF2CDE703000F74BA5 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E075F6EE2CDE703000F74BA5 /* GLTFKit2.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		E01ACB472CC7F9F4004E9D53 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		E075F6E82CDE6C7300F74BA5 /* SdfKernels.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SdfKernels.metal; sourceTree = "<group>"; };
+		E075F6EA2CDE6FF700F74BA5 /* GLTFKit2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = GLTFKit2.framework; sourceTree = "<group>"; };
+		E075F6F12CDE708100F74BA5 /* ModelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelImporter.swift; sourceTree = "<group>"; };
+		E075F6F52CDE711B00F74BA5 /* MeshSDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshSDF.swift; sourceTree = "<group>"; };
+		E075F6F72CDE741C00F74BA5 /* Medical_Hand_baseColor.jpeg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Medical_Hand_baseColor.jpeg; sourceTree = "<group>"; };
+		E075F6F82CDE741C00F74BA5 /* Medical_Hand_metallicRoughness.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Medical_Hand_metallicRoughness.png; sourceTree = "<group>"; };
+		E075F6F92CDE741C00F74BA5 /* Medical_Hand_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Medical_Hand_normal.png; sourceTree = "<group>"; };
+		E075F6FB2CDE741C00F74BA5 /* license.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
+		E075F6FC2CDE741C00F74BA5 /* scene.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = scene.bin; sourceTree = "<group>"; };
+		E075F6FD2CDE741C00F74BA5 /* scene.gltf */ = {isa = PBXFileReference; lastKnownFileType = text; path = scene.gltf; sourceTree = "<group>"; };
 		E07651C22CA06ED9007F6A79 /* physics.solvers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = physics.solvers.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = physics_solversApp.swift; sourceTree = "<group>"; };
 		E07651C72CA06ED9007F6A79 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -43,12 +76,42 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E075F6ED2CDE703000F74BA5 /* GLTFKit2.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E075F6EB2CDE6FF700F74BA5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E075F6EA2CDE6FF700F74BA5 /* GLTFKit2.framework */,
+			);
+			path = Frameworks;
+			sourceTree = "<group>";
+		};
+		E075F6FA2CDE741C00F74BA5 /* textures */ = {
+			isa = PBXGroup;
+			children = (
+				E075F6F72CDE741C00F74BA5 /* Medical_Hand_baseColor.jpeg */,
+				E075F6F82CDE741C00F74BA5 /* Medical_Hand_metallicRoughness.png */,
+				E075F6F92CDE741C00F74BA5 /* Medical_Hand_normal.png */,
+			);
+			path = textures;
+			sourceTree = "<group>";
+		};
+		E075F6FE2CDE741C00F74BA5 /* vr_hand_simple */ = {
+			isa = PBXGroup;
+			children = (
+				E075F6FA2CDE741C00F74BA5 /* textures */,
+				E075F6FB2CDE741C00F74BA5 /* license.txt */,
+				E075F6FC2CDE741C00F74BA5 /* scene.bin */,
+				E075F6FD2CDE741C00F74BA5 /* scene.gltf */,
+			);
+			path = vr_hand_simple;
+			sourceTree = "<group>";
+		};
 		E07651B92CA06ED9007F6A79 = {
 			isa = PBXGroup;
 			children = (
@@ -68,6 +131,8 @@
 		E07651C42CA06ED9007F6A79 /* physics.solvers */ = {
 			isa = PBXGroup;
 			children = (
+				E075F6F52CDE711B00F74BA5 /* MeshSDF.swift */,
+				E075F6F12CDE708100F74BA5 /* ModelImporter.swift */,
 				E01ACB472CC7F9F4004E9D53 /* Renderer.swift */,
 				E0EC16992CD5A74B008430F5 /* Viewport.metal */,
 				E07651C52CA06ED9007F6A79 /* physics_solversApp.swift */,
@@ -76,8 +141,10 @@
 				E07651CB2CA06EDA007F6A79 /* physics_solvers.entitlements */,
 				E07651CC2CA06EDA007F6A79 /* Preview Content */,
 				E07651D42CA06F2F007F6A79 /* 2dFluid.metal */,
+				E075F6EB2CDE6FF700F74BA5 /* Frameworks */,
 				E07651D62CA0F884007F6A79 /* ResourceManager.swift */,
 				E090FA922CC30777002E5A53 /* Viewport.swift */,
+				E075F6FE2CDE741C00F74BA5 /* vr_hand_simple */,
 				E075F6E82CDE6C7300F74BA5 /* SdfKernels.metal */,
 				E088E61B2CBC8E4400753F99 /* ResourceManager3D.swift */,
 				E088E6192CBC800E00753F99 /* 3dFluid.metal */,
@@ -103,6 +170,7 @@
 				E07651BE2CA06ED9007F6A79 /* Sources */,
 				E07651BF2CA06ED9007F6A79 /* Frameworks */,
 				E07651C02CA06ED9007F6A79 /* Resources */,
+				E075F6EF2CDE703000F74BA5 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -153,6 +221,12 @@
 			files = (
 				E07651CE2CA06EDA007F6A79 /* Preview Assets.xcassets in Resources */,
 				E07651CA2CA06EDA007F6A79 /* Assets.xcassets in Resources */,
+				E075F6FF2CDE741C00F74BA5 /* Medical_Hand_normal.png in Resources */,
+				E075F7002CDE741C00F74BA5 /* scene.bin in Resources */,
+				E075F7012CDE741C00F74BA5 /* Medical_Hand_metallicRoughness.png in Resources */,
+				E075F7022CDE741C00F74BA5 /* Medical_Hand_baseColor.jpeg in Resources */,
+				E075F7032CDE741C00F74BA5 /* scene.gltf in Resources */,
+				E075F7042CDE741C00F74BA5 /* license.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,11 +241,13 @@
 				E090FA932CC30782002E5A53 /* Viewport.swift in Sources */,
 				E088E61C2CBC8E4B00753F99 /* ResourceManager3D.swift in Sources */,
 				E07651C62CA06ED9007F6A79 /* physics_solversApp.swift in Sources */,
+				E075F6F22CDE708600F74BA5 /* ModelImporter.swift in Sources */,
 				E088E61A2CBC801B00753F99 /* 3dFluid.metal in Sources */,
 				E07651D52CA06F2F007F6A79 /* 2dFluid.metal in Sources */,
 				E01ACB482CC7F9F7004E9D53 /* Renderer.swift in Sources */,
 				E07651D72CA0F884007F6A79 /* ResourceManager.swift in Sources */,
 				E075F6E92CDE6C8C00F74BA5 /* SdfKernels.metal in Sources */,
+				E075F6F62CDE711B00F74BA5 /* MeshSDF.swift in Sources */,
 				E0EC169A2CD5A751008430F5 /* Viewport.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -305,6 +381,10 @@
 				DEVELOPMENT_TEAM = RXJF5NALU5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/physics.solvers/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -343,6 +423,10 @@
 				DEVELOPMENT_TEAM = RXJF5NALU5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/physics.solvers/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;

@@ -11,18 +11,20 @@ import Metal
 
 struct Viewport : NSViewRepresentable {
     var renderer : Renderer?
+    var sdf : MeshSDF?
     var simulator : ResourceManager3D?
     var simulator2d : ResourceManager2D
     
     class Coordinator : NSObject, MTKViewDelegate {
         var renderer : Renderer?
+        var sdf : MeshSDF?
         var simulator : ResourceManager3D?
         var simulator2d : ResourceManager2D
         var viewport : Viewport
         var device : MTLDevice
         var commandQueue : MTLCommandQueue
         
-        init(viewport : Viewport, simulator : ResourceManager3D?, simulator2d : ResourceManager2D, renderer : Renderer?)
+        init(viewport : Viewport, simulator : ResourceManager3D?, simulator2d : ResourceManager2D, renderer : Renderer?, sdf: MeshSDF?)
         {
             self.viewport = viewport
             self.simulator = simulator
@@ -30,6 +32,7 @@ struct Viewport : NSViewRepresentable {
             self.device = simulator2d.device!
             self.renderer = renderer
             self.commandQueue = simulator2d.commandQueue!
+            self.sdf = sdf
         }
         
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -38,7 +41,7 @@ struct Viewport : NSViewRepresentable {
         
         func draw(in view: MTKView) {
             guard let drawable = view.currentDrawable else { return }
-            
+            sdf?.Voxelize(sharedBuffer: nil)
             simulator2d.Simulate()
             let render = renderer?.Draw()
             //print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
@@ -89,6 +92,6 @@ struct Viewport : NSViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        return Coordinator(viewport: self, simulator: simulator, simulator2d: simulator2d, renderer: renderer)
+        return Coordinator(viewport: self, simulator: simulator, simulator2d: simulator2d, renderer: renderer, sdf: sdf)
     }
 }
