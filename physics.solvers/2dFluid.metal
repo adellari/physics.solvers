@@ -47,7 +47,7 @@ struct JacobiParams{
 //advect temperature to velocity
 //advect dnesity to velocity
 
-kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]],constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], texture2d<float, access::read> obstacles [[texture(3)]], constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);

@@ -12,8 +12,10 @@ class MeshSDF
     var voxelizer : MTLComputePipelineState
     var jfer : MTLComputePipelineState
     var sdfer : MTLComputePipelineState
+    var slicer : MTLComputePipelineState
     var voxelTex : MTLTexture
     var sdfTex : MTLTexture
+    var sliceTex : MTLTexture
     var commandQueue : MTLCommandQueue
     var triangles : [Triangle]?
     var voxelGroups : MTLSize?
@@ -26,9 +28,11 @@ class MeshSDF
         let voxelFunc = library.makeFunction(name: "MeshToVoxel")!
         let jfaFunc = library.makeFunction(name: "JFAIteration")!
         let sdfFunc = library.makeFunction(name: "JFAPost")!
+        let sliceFunc = library.makeFunction(name: "ExtractSlice")!
         voxelizer = try device.makeComputePipelineState(function: voxelFunc)
         jfer = try device.makeComputePipelineState(function: jfaFunc)
         sdfer = try device.makeComputePipelineState(function: sdfFunc)
+        slicer = try device.makeComputePipelineState(function: sliceFunc)
         self.commandQueue = sharedQueue ?? device.makeCommandQueue()!
         
         let volumeDesc = MTLTextureDescriptor()
@@ -36,8 +40,13 @@ class MeshSDF
         volumeDesc.textureType = .type3D
         volumeDesc.width = 64; volumeDesc.height = 64; volumeDesc.depth = 64;
         volumeDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
+        let sliceDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r16Float, width: 512, height: 512, mipmapped: false)
+        sliceDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
         voxelTex = device.makeTexture(descriptor: volumeDesc)!
         sdfTex = device.makeTexture(descriptor: volumeDesc)!
+        sliceTex = device.makeTexture(descriptor: sliceDesc)!
         
         LoadMesh()
     }
@@ -65,7 +74,7 @@ class MeshSDF
         
     }
     
-    func Voxelize(sharedBuffer : MTLCommandBuffer?)
+    func Voxelize(sharedBuffer : MTLCommandBuffer?, outputSlice : Int?)
     {
         
         let commandBuffer = sharedBuffer ?? commandQueue.makeCommandBuffer()!
@@ -100,6 +109,15 @@ class MeshSDF
         sdfEncoder.setTexture(voxelTex, index: 0)
         sdfEncoder.dispatchThreadgroups(MTLSize(width: 8, height: 8, depth: 8), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 8))
         sdfEncoder.endEncoding()
+        
+        var sliceIndex = outputSlice ?? 31
+        let sliceEncoder = commandBuffer.makeComputeCommandEncoder()!
+        sliceEncoder.setComputePipelineState(slicer)
+        sliceEncoder.setTexture(voxelTex, index: 0)
+        sliceEncoder.setTexture(sliceTex, index: 1)
+        sliceEncoder.setBytes(&sliceIndex, length:MemoryLayout<Int>.size, index: 0)
+        sliceEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 512/32, height: 512/32, depth: 1))
+        sliceEncoder.endEncoding()
         
         commandBuffer.commit();
         
