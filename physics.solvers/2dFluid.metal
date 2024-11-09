@@ -265,13 +265,13 @@ kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[textur
     
 }
 
-kernel void ConstituteObstacle(texture2d<float, access::read> velocity [[texture(0)]], texture2d<half, access::read> obstacles [[texture(1)]], texture2d<float, access::read_write> output [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void ConstituteObstacle(texture2d<float, access::read> velocity [[texture(0)]], texture2d<half, access::read> obstacles [[texture(1)]], texture2d<float, access::write> output [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
     float4 col;
     uint xhalf = output.get_width()/2;
     if (position.x > xhalf)
     {
-        float obs = obstacles.read(uint2(position.x - xhalf, position.y)).x;
+        float obs = 1.f - obstacles.read(uint2(position.x - xhalf, position.y)).x;
         col = float4(obs, obs, obs, 1.f);
     }
     else

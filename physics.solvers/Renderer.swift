@@ -13,7 +13,6 @@ class Renderer
     var commandQueue : MTLCommandQueue
     var tracer : MTLComputePipelineState
     var viewportTexture : MTLTexture
-    var chain : (Ping : MTLTexture, Pong : MTLTexture)?
     var fluidTexture : MTLTexture?
     var camera : CameraParams
     var azimuth : Double = 0.0
@@ -44,14 +43,8 @@ class Renderer
         self.camera.projectionMatrix = self.Projection(fov: 60, aspect: 2.0, near: 0.1, far: 1000)
     }
     
-    public func CreateChain(format : MTLPixelFormat)
-    {
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: self.viewportTexture.width, height: self.viewportTexture.height, mipmapped: false)
-        descriptor.usage = .shaderWrite
-        self.chain = (device.makeTexture(descriptor: descriptor)!, device.makeTexture(descriptor: descriptor)!)
-    }
     
-    public func Draw() -> MTLTexture?
+    public func Draw(chain : (Ping: MTLTexture, Pong : MTLTexture)? = nil) -> MTLTexture?
     {
         //draw the scene from the resultant 3d velocity texture
         let renderBuffer = commandQueue.makeCommandBuffer()!
@@ -61,14 +54,14 @@ class Renderer
         self.camera.cameraMatrix = self.Camera(eye: simd_float3(0, 0, 0), theta: Float(self.elevation), phi: Float(self.azimuth) + .pi)
         renderEncoder.setBytes(&camera, length: MemoryLayout<CameraParams>.size, index: 0)
         renderEncoder.setTexture(self.viewportTexture, index: 0)
-        if (self.chain?.Ping != nil) {renderEncoder.setTexture(self.chain!.Ping, index: 1)}
+        if (chain?.Ping != nil) {renderEncoder.setTexture(chain!.Ping, index: 1)}
         renderEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 32, height: 16, depth: 1))
         //dispatch
         renderEncoder.endEncoding()
         renderBuffer.commit()
         
         
-        return self.chain?.Ping
+        return chain?.Ping
     }
     
     //theta = inclination with range [-π/2, π/2] where 0 is the equator

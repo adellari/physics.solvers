@@ -134,6 +134,7 @@ class ResourceManager2D : NSObject
     var impulsePipeline : MTLComputePipelineState
     var divergencePipeline : MTLComputePipelineState
     var constitutionPipeline : MTLComputePipelineState
+    var constituteObstaclePipeline : MTLComputePipelineState
     var fluid : Fluid
     //var metalView : MTKView
     var frames = 0
@@ -151,6 +152,7 @@ class ResourceManager2D : NSObject
         let poisson = library.makeFunction(name: "PoissonCorrection")
         let divergence = library.makeFunction(name: "Divergence")
         let constitution = library.makeFunction(name: "Constitution")
+        let constituteObstacle = library.makeFunction(name: "ConstituteObstacle")
         
         self.jacobiPipeline = try library.device.makeComputePipelineState(function: jacobi!)
         self.advectionPipeline = try library.device.makeComputePipelineState(function: advection!)
@@ -159,6 +161,7 @@ class ResourceManager2D : NSObject
         self.divergencePipeline = try library.device.makeComputePipelineState(function: divergence!)
         self.constitutionPipeline = try library.device.makeComputePipelineState(function: constitution!)
         self.buoyancyPipeline = try library.device.makeComputePipelineState(function: buoyancy!)
+        self.constituteObstaclePipeline = try library.device.makeComputePipelineState(function: constituteObstacle!)
         
         self.commandQueue = _device.makeCommandQueue()
         self.device = _device
@@ -173,7 +176,7 @@ class ResourceManager2D : NSObject
         surface.Pong = temp
     }
     
-    func Simulate(obstacleTex : MTLTexture? = nil)
+    func Simulate(obstacleTex : MTLTexture? = nil, chainOutput : MTLTexture? = nil) -> MTLTexture?
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
         
@@ -279,10 +282,11 @@ class ResourceManager2D : NSObject
         Swap(surface: &fluid.Velocity)
         
         let chainEncoder = commandBuffer!.makeComputeCommandEncoder()!
-        chainEncoder.setComputePipelineState(self.constitutionPipeline)
+        chainEncoder.setComputePipelineState(self.constituteObstaclePipeline)
         chainEncoder.setTexture(fluid.Velocity.Ping, index: 0)
-        chainEncoder.setTexture(fluid.chain, index: 1)
-        chainEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        chainEncoder.setTexture(obstacleTex!, index: 1)
+        chainEncoder.setTexture(chainOutput!, index: 2)
+        chainEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: MTLSize(width: threadsPerGroup.width * 2, height: threadsPerGroup.height, depth: threadsPerGroup.depth))
         chainEncoder.endEncoding()
 
         //advect
@@ -293,6 +297,7 @@ class ResourceManager2D : NSObject
         
         //encoder.endEncoding()
         commandBuffer!.commit()
+        return chainOutput
     }
     
 }

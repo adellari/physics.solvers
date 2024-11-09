@@ -23,6 +23,7 @@ struct Viewport : NSViewRepresentable {
         var viewport : Viewport
         var device : MTLDevice
         var commandQueue : MTLCommandQueue
+        var chain : (Ping : MTLTexture, Pong : MTLTexture)?
         
         init(viewport : Viewport, simulator : ResourceManager3D?, simulator2d : ResourceManager2D, renderer : Renderer?, sdf: MeshSDF?)
         {
@@ -39,18 +40,25 @@ struct Viewport : NSViewRepresentable {
             
         }
         
+        func CreateChain(format : MTLPixelFormat, size: MTLSize)
+        {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: size.width, height: size.height, mipmapped: false)
+            descriptor.usage = .shaderWrite
+            self.chain = (device.makeTexture(descriptor: descriptor)!, device.makeTexture(descriptor: descriptor)!)
+        }
+        
         func draw(in view: MTKView) {
             guard let drawable = view.currentDrawable else { return }
             sdf?.Voxelize(outputSlice: 32)
-            simulator2d.Simulate(obstacleTex : sdf?.sliceTex)
-            let render = renderer?.Draw()
+            let simulation = simulator2d.Simulate(obstacleTex : sdf?.sliceTex, chainOutput: chain?.Ping)
+            //let render = renderer?.Draw(chain: self.chain)
             //print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
             
-            if (render != nil)
+            if (simulation != nil)
             {
                 let cmd = commandQueue.makeCommandBuffer()!
                 let blitEncoder = cmd.makeBlitCommandEncoder()!
-                blitEncoder.copy(from: render!, to: drawable.texture)
+                blitEncoder.copy(from: simulation!, to: drawable.texture)
                 blitEncoder.endEncoding()
                 cmd.commit()
             }
@@ -66,12 +74,13 @@ struct Viewport : NSViewRepresentable {
     func makeNSView(context: Context) -> MTKView
     {
         let view = MTKView()
+        let dim = MTLSize(width: 1024, height: 512, depth: 1)
         view.device = simulator2d.device
         view.delegate = context.coordinator
         view.framebufferOnly = false
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        view.frame = CGRect(x: 0, y: 0, width: 1024, height: 512)
-        renderer!.CreateChain(format: view.colorPixelFormat)
+        view.frame = CGRect(x: 0, y: 0, width: dim.width, height: dim.height)
+        context.coordinator.CreateChain(format: view.colorPixelFormat, size: dim)
         /*
         let captureManager = MTLCaptureManager.shared()
         let capDesc = MTLCaptureDescriptor()
