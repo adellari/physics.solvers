@@ -47,7 +47,7 @@ struct JacobiParams{
 //advect temperature to velocity
 //advect dnesity to velocity
 
-kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], texture2d<float, access::read> obstacles [[texture(3)]], constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
@@ -114,7 +114,7 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
 
 //calculate divergence of velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], texture2d<float, access::write> pressureOut [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], texture2d<float, access::write> divergenceOut [[texture(1)]], texture2d<float, access::write> pressureOut [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
 {
     //constexpr sampler textureSampler(filter::linear, address::clamp_to_zero);
     //position = uint2(position.x, 512 - position.y);
@@ -156,7 +156,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
 
 //jacobi iterations
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], /*constant JacobiParams* jacobiParams [[buffer(0)]], */const uint2 position [[thread_position_in_grid]])
+kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
 {
     //high level ( we're solving for a pressure field that satisfies the Pressure Poisson Eqation ∇²P(x) = 0 )
     //to this effect we start with initializing p to 0
@@ -216,7 +216,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 
 //subtract gradient of pressure from the velocity
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
@@ -263,6 +263,21 @@ kernel void Constitution(texture2d<float, access::sample> tempDensityIn [[textur
     col = abs(col);
     chain.write(float4(col.r, col.g, 0, 1), position);
     
+}
+
+kernel void ConstituteObstacle(texture2d<float, access::read> velocity [[texture(0)]], texture2d<half, access::read> obstacles [[texture(1)]], texture2d<float, access::read_write> output [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+{
+    float4 col;
+    uint xhalf = output.get_width()/2;
+    if (position.x > xhalf)
+    {
+        float obs = obstacles.read(uint2(position.x - xhalf, position.y)).x;
+        col = float4(obs, obs, obs, 1.f);
+    }
+    else
+        col = float4(abs(velocity.read(position).xyz), 1);
+    
+    output.write(col, position);
 }
 
 

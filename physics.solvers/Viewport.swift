@@ -41,8 +41,8 @@ struct Viewport : NSViewRepresentable {
         
         func draw(in view: MTKView) {
             guard let drawable = view.currentDrawable else { return }
-            sdf?.Voxelize(sharedBuffer: nil, outputSlice: 32)
-            simulator2d.Simulate()
+            sdf?.Voxelize(outputSlice: 32)
+            simulator2d.Simulate(obstacleTex : sdf?.sliceTex)
             let render = renderer?.Draw()
             //print("swapchain size: \(drawable.texture.width) x \(drawable.texture.height)")
             

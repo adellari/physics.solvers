@@ -74,7 +74,7 @@ class MeshSDF
         
     }
     
-    func Voxelize(sharedBuffer : MTLCommandBuffer?, outputSlice : Int?)
+    func Voxelize(sharedBuffer : MTLCommandBuffer? = nil, outputSlice : Int?)
     {
         
         let commandBuffer = sharedBuffer ?? commandQueue.makeCommandBuffer()!

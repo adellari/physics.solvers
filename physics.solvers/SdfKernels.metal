@@ -18,14 +18,14 @@ struct Triangle
     float3 c;
 };
 
-kernel void ExtractSlice(texture3d<half, access::sample> cube [[texture(0)]], texture2d<float, access::write> sliceOut [[texture(1)]], constant int& slice [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
+kernel void ExtractSlice(texture3d<half, access::sample> cube [[texture(0)]], texture2d<half, access::write> sliceOut [[texture(1)]], constant int& slice [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler cubeSampler(filter::linear, address::clamp_to_zero);
-    float3 cubeSize = float3(cube.get_width(), cube.get_height(), cube.get_depth());
-    float3 uvw = float3((float)position.x/cubeSize.x, (float)position.y/cubeSize.y, (float)slice/cubeSize.z);
+    float2 outputSize = float2(sliceOut.get_width(), sliceOut.get_height());
+    float3 uvw = float3((float)position.x/outputSize.x, (float)position.y/outputSize.y, (float)slice/(float)cube.get_depth());
     
-    float distance = cube.sample(cubeSampler, uvw).x;
-    sliceOut.write(float4(distance, distance, distance, 1.f), position);
+    half distance = cube.sample(cubeSampler, uvw).x;
+    sliceOut.write(half4(distance, distance, distance, 1.f), position);
 }
 
 kernel void JFAPost(texture3d<half, access::read_write> cube [[texture(0)]], const uint3 position [[thread_position_in_grid]])

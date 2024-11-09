@@ -173,7 +173,7 @@ class ResourceManager2D : NSObject
         surface.Pong = temp
     }
     
-    func Simulate()
+    func Simulate(obstacleTex : MTLTexture? = nil)
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
         
