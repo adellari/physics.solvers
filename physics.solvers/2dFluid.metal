@@ -96,10 +96,10 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
     float2 textureSize = float2(temperatureOut.get_width(), temperatureOut.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(float2(0.5, 0.45), uv);
+    float d = distance(float2(0.5, 0.08), uv);
     float impulse = 0.f;
     
-    if (d < 0.1)
+    if (d < 0.08)
     {
         float a = (0.1f - d) * 0.5f;   //
         impulse = min(a, 1.f);
