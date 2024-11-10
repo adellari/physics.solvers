@@ -33,10 +33,10 @@ struct ContentView: View {
                             viewport.renderer!.elevation += value.velocity.height * -0.001
                         }
                 )
-            /*
-            Slider(value: $horizontalValue, in: 0...Double.pi, onEditingChanged: { _ in
-                viewport.renderer!.azimuth = horizontalValue
-            })*/
+            
+            Slider(value: $horizontalValue, in: 0...64, onEditingChanged: { _ in
+                viewport.sdf!.sliceIdx = Int(horizontalValue)
+            })
         }
         .onAppear()
         {

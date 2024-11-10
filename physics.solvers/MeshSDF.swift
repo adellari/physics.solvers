@@ -20,6 +20,8 @@ class MeshSDF
     var triangles : [Triangle]?
     var voxelGroups : MTLSize?
     var trisCount : Int?
+    public var sliceIdx : Int = 0
+    private var commandedSlice : Int = 0
     
     init(_device : MTLDevice, sharedQueue : MTLCommandQueue?) throws
     {
@@ -74,53 +76,58 @@ class MeshSDF
         
     }
     
-    func Voxelize(sharedBuffer : MTLCommandBuffer? = nil, outputSlice : Int?)
+    func Voxelize(sharedBuffer : MTLCommandBuffer? = nil, outputSlice : Int? = nil)
     {
         
-        let commandBuffer = sharedBuffer ?? commandQueue.makeCommandBuffer()!
-        let trisBuffer = device.makeBuffer(bytes: self.triangles!, length: self.triangles!.count * MemoryLayout<Triangle>.stride, options: [])
+        var sliceIndex = outputSlice ?? self.sliceIdx
         
-        let voxelEncoder = commandBuffer.makeComputeCommandEncoder()!
-        voxelEncoder.setComputePipelineState(voxelizer)
-        voxelEncoder.label = "Mesh to Voxels"
-        voxelEncoder.setBuffer(trisBuffer, offset: 0, index: 1)
-        voxelEncoder.setBytes(&self.trisCount!, length: MemoryLayout<Int>.size, index: 0)
-        voxelEncoder.setTexture(voxelTex, index: 0)
-        voxelEncoder.dispatchThreadgroups(voxelGroups!, threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
-        voxelEncoder.endEncoding()
-        
-        var iteration = 32
-        
-        while iteration >= 1
+        if sliceIndex != commandedSlice
         {
-            var iter = Int16(iteration)
-            let jfaEncoder = commandBuffer.makeComputeCommandEncoder()!
-            jfaEncoder.setComputePipelineState(jfer)
-            jfaEncoder.setTexture(voxelTex, index: 0)
-            jfaEncoder.setBytes(&iter, length:MemoryLayout<Int16>.size, index: 0)
-            jfaEncoder.dispatchThreadgroups(MTLSize(width: 8, height: 8, depth: 8), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 8))
-            jfaEncoder.endEncoding()
             
-            iteration /= 2
+            let commandBuffer = sharedBuffer ?? commandQueue.makeCommandBuffer()!
+            let trisBuffer = device.makeBuffer(bytes: self.triangles!, length: self.triangles!.count * MemoryLayout<Triangle>.stride, options: [])
+            
+            let voxelEncoder = commandBuffer.makeComputeCommandEncoder()!
+            voxelEncoder.setComputePipelineState(voxelizer)
+            voxelEncoder.label = "Mesh to Voxels"
+            voxelEncoder.setBuffer(trisBuffer, offset: 0, index: 1)
+            voxelEncoder.setBytes(&self.trisCount!, length: MemoryLayout<Int>.size, index: 0)
+            voxelEncoder.setTexture(voxelTex, index: 0)
+            voxelEncoder.dispatchThreadgroups(voxelGroups!, threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
+            voxelEncoder.endEncoding()
+            
+            var iteration = 32
+            
+            while iteration >= 1
+            {
+                var iter = Int16(iteration)
+                let jfaEncoder = commandBuffer.makeComputeCommandEncoder()!
+                jfaEncoder.setComputePipelineState(jfer)
+                jfaEncoder.setTexture(voxelTex, index: 0)
+                jfaEncoder.setBytes(&iter, length:MemoryLayout<Int16>.size, index: 0)
+                jfaEncoder.dispatchThreadgroups(MTLSize(width: 8, height: 8, depth: 8), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 8))
+                jfaEncoder.endEncoding()
+                
+                iteration /= 2
+            }
+            
+            let sdfEncoder = commandBuffer.makeComputeCommandEncoder()!
+            sdfEncoder.setComputePipelineState(sdfer)
+            sdfEncoder.setTexture(voxelTex, index: 0)
+            sdfEncoder.dispatchThreadgroups(MTLSize(width: 8, height: 8, depth: 8), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 8))
+            sdfEncoder.endEncoding()
+            
+            let sliceEncoder = commandBuffer.makeComputeCommandEncoder()!
+            sliceEncoder.setComputePipelineState(slicer)
+            sliceEncoder.setTexture(voxelTex, index: 0)
+            sliceEncoder.setTexture(sliceTex, index: 1)
+            sliceEncoder.setBytes(&sliceIndex, length:MemoryLayout<Int>.size, index: 0)
+            sliceEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 512/32, height: 512/32, depth: 1))
+            sliceEncoder.endEncoding()
+            
+            commandBuffer.commit();
+            self.commandedSlice = sliceIndex
         }
-        
-        let sdfEncoder = commandBuffer.makeComputeCommandEncoder()!
-        sdfEncoder.setComputePipelineState(sdfer)
-        sdfEncoder.setTexture(voxelTex, index: 0)
-        sdfEncoder.dispatchThreadgroups(MTLSize(width: 8, height: 8, depth: 8), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 8))
-        sdfEncoder.endEncoding()
-        
-        var sliceIndex = outputSlice ?? 31
-        let sliceEncoder = commandBuffer.makeComputeCommandEncoder()!
-        sliceEncoder.setComputePipelineState(slicer)
-        sliceEncoder.setTexture(voxelTex, index: 0)
-        sliceEncoder.setTexture(sliceTex, index: 1)
-        sliceEncoder.setBytes(&sliceIndex, length:MemoryLayout<Int>.size, index: 0)
-        sliceEncoder.dispatchThreadgroups(MTLSize(width: 32, height: 32, depth: 1), threadsPerThreadgroup: MTLSize(width: 512/32, height: 512/32, depth: 1))
-        sliceEncoder.endEncoding()
-        
-        commandBuffer.commit();
-        
         
     }
     

@@ -20,7 +20,7 @@ struct Triangle
 
 kernel void ExtractSlice(texture3d<half, access::sample> cube [[texture(0)]], texture2d<half, access::write> sliceOut [[texture(1)]], constant int& slice [[buffer(0)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler cubeSampler(filter::linear, address::clamp_to_zero);
+    constexpr sampler cubeSampler(filter::linear, address::clamp_to_edge);
     float2 outputSize = float2(sliceOut.get_width(), sliceOut.get_height());
     float3 uvw = float3((float)position.x/outputSize.x, (float)position.y/outputSize.y, (float)slice/(float)cube.get_depth());
     

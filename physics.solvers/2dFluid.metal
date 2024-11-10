@@ -209,7 +209,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     ///and velocity is the gradient of pressure (potential)
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
-    float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
+    float prime = (pW + pE + pS + pN +  -4 * div) * 0.25f;
     pressureOut.write(float4(prime, prime, prime, prime), position);
     
 }
@@ -271,7 +271,7 @@ kernel void ConstituteObstacle(texture2d<float, access::read> velocity [[texture
     uint xhalf = output.get_width()/2;
     if (position.x > xhalf)
     {
-        float obs = 1.f - obstacles.read(uint2(position.x - xhalf, position.y)).x;
+        float obs = obstacles.read(uint2(position.x - xhalf, position.y)).x;
         col = float4(obs, obs, obs, 1.f);
     }
     else
