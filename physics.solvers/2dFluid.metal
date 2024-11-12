@@ -55,6 +55,7 @@ kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(
     const float2 texelSize = float2(1.f / textureSize.x, 1.f / textureSize.y);
     float2 fragCoord = float2(position.xy);
     float2 uv = fragCoord * texelSize;
+    half obst = obstacles.read(position).x;
     
     //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
     //float2 currentVelocity = velocitySample.sample(textureSampler, uv).xy;
@@ -69,6 +70,7 @@ kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(
     
     if (position.y >= 511) newValue.y = 0.f;
     if (position.y <= 1) newValue.y = 0.f;
+    newValue *= obst < 0.02f ? 0.f : 1.f;
     
     sink.write(float4(newValue, newValue), position);
 }
@@ -123,12 +125,6 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     
     //float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    /*
-    float2 N = uv + float2(0, -texelSize.y);
-    float2 S = uv + float2(0, texelSize.y);
-    float2 W = uv + float2(-texelSize.x, 0);
-    float2 E = uv + float2(texelSize.x, 0);
-    */
     
     uint2 N = position + uint2(0, 1);
     uint2 S = position + uint2(0, -1);
@@ -140,16 +136,26 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     float2 uS = (velocity.read(S).xy + uC) / 2.f;
     float2 uE = (velocity.read(E).xy + uC) / 2.f;
     float2 uW = (velocity.read(W).xy + uC) / 2.f;
+    half obstN = obstacles.read(N).x;
+    half obstS = obstacles.read(S).x;
+    half obstE = obstacles.read(E).x;
+    half obstW = obstacles.read(W).x;
     
+    if (position.x >= 511 || obstE < 0.02f) uE.x = 0.f;
+    if (position.x <= 1 || obstW < 0.02f) uW.x = 0.f;
     
-    if (position.x >= 511) uE.x = 0.f;
-    if (position.x <= 1) uW.x = 0.f;
+    if (position.y >= 511 || obstN < 0.02f) uN.y = 0.f;
+    if (position.y <= 1 || obstS < 0.02f) uS.y = 0.f;
     
-    if (position.y >= 511) uN.y = 0.f;
-    if (position.y <= 1) uS.y = 0.f;
-    
+    /*
+    uE = obstE < 0.02f ? 0.f : uE;
+    uW = obstW < 0.02f ? 0.f : uW;
+    uN = obstN < 0.02f ? 0.f : uN;
+    uS = obstS < 0.02f ? 0.f : uS;
+    */
     
     float divergence = (0.5f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
+    
     divergenceOut.write(float4(divergence, 0, 0, 0), position);
     //pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
 }
@@ -179,14 +185,6 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     
     //float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     float div = divergenceIn.read(position).r;
-    //float div = divergenceIn.sample(divergenceSampler, uv).r;
-    //float div = divergenceIn.sample(divergenceSampler,  uv).r;
-    /*
-    float2 N = uv + float2(0, -texelSize.y);
-    float2 S = uv + float2(0, texelSize.y);
-    float2 W = uv + float2(-texelSize.x, 0);
-    float2 E = uv + float2(texelSize.x, 0);
-    */
     uint2 N = position + uint2(0, 2);
     uint2 S = position + uint2(0, -2);
     uint2 W = position + uint2(-2, 0);
@@ -198,13 +196,24 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float pW = pressureIn.read(W).r;
     float pC = pressureIn.read(position).r;
     
+    half obstN = obstacles.read(N).x;
+    half obstS = obstacles.read(S).x;
+    half obstE = obstacles.read(E).x;
+    half obstW = obstacles.read(W).x;
     
-    if (position.x >= 510) pE = pC;
-    if (position.x <= 2) pW = pC;
     
-    if (position.y >= 510) pN = pC;
-    if (position.y <= 2) pS = pC;
+    if (position.x >= 510 || obstE < 0.02f) pE = pC;
+    if (position.x <= 2 || obstW < 0.02f) pW = pC;
     
+    if (position.y >= 510 || obstN < 0.02f) pN = pC;
+    if (position.y <= 2 || obstS < 0.02f) pS = pC;
+    
+    /*
+    pE = obstE < 0.02f ? pC : pE;
+    pW = obstW < 0.02f ? pC : pW;
+    pN = obstN < 0.02f ? pC : pN;
+    pS = obstS < 0.02f ? pC : pS;
+    */
     ///remember pressure/potential is the integral of velocity
     ///and velocity is the gradient of pressure (potential)
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
@@ -236,14 +245,23 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     float pW = pressureIn.read(W).r;
     float pC = pressureIn.read(position).r;
     
-    
-    if (position.x >= 511) pE = pC;
-    if (position.x <= 1) pW = pC;
-    
-    if (position.y >= 511) pN = pC;
-    if (position.y <= 1) pS = pC;
+    half obstN = obstacles.read(N).x;
+    half obstS = obstacles.read(S).x;
+    half obstE = obstacles.read(E).x;
+    half obstW = obstacles.read(W).x;
     
     
+    if (position.x >= 511 || obstE < 0.02f) pE = pC;
+    if (position.x <= 1 || obstW < 0.02f) pW = pC;
+    
+    if (position.y >= 511 || obstN < 0.02f) pN = pC;
+    if (position.y <= 1 || obstS < 0.02f) pS = pC;
+    /*
+    pE = obstE < 0.02f ? pC : pE;
+    pW = obstW < 0.02f ? pC : pW;
+    pN = obstN < 0.02f ? pC : pN;
+    pS = obstS < 0.02f ? pC : pS;
+    */
     float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
     //float2 oldVelocity = velocityIn.read(position).xy;
     float2 pGradient = float2(pE - pW, pN - pS) * 0.5f;

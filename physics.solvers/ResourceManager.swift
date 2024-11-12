@@ -187,6 +187,7 @@ class ResourceManager2D : NSObject
         advectVelocity.setTexture(fluid.Velocity.Ping, index: 0)
         advectVelocity.setTexture(fluid.Velocity.Ping, index: 1)
         advectVelocity.setTexture(fluid.Velocity.Pong, index: 2)
+        advectVelocity.setTexture(obstacleTex!, index: 3)
         advectVelocity.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectVelocity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         advectVelocity.label = "Advect Velocity"
@@ -200,6 +201,7 @@ class ResourceManager2D : NSObject
         advectTemperature.setTexture(fluid.Velocity.Ping, index: 0)
         advectTemperature.setTexture(fluid.Temperature.Ping, index: 1)
         advectTemperature.setTexture(fluid.Temperature.Pong, index: 2)
+        advectTemperature.setTexture(obstacleTex!, index: 3)
         advectTemperature.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectTemperature.label = "Advect Temperature"
         advectTemperature.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
@@ -213,6 +215,7 @@ class ResourceManager2D : NSObject
         advectDensity.setTexture(fluid.Velocity.Ping, index: 0)
         advectDensity.setTexture(fluid.Density.Ping, index: 1)
         advectDensity.setTexture(fluid.Density.Pong, index: 2)
+        advectDensity.setTexture(obstacleTex!, index: 3)
         advectDensity.setBytes(&diffuse, length: MemoryLayout<Float>.size, index: 3)
         advectDensity.label = "Advect Density"
         advectDensity.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
@@ -249,13 +252,14 @@ class ResourceManager2D : NSObject
         divEncoder.setTexture(fluid.Velocity.Ping, index: 0)
         divEncoder.setTexture(fluid.Divergence.Pong, index: 1)
         divEncoder.setTexture(fluid.Pressure.Pong, index: 2)    //we don't actually zero out pressure anymore
+        divEncoder.setTexture(obstacleTex!, index: 3)
         divEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         divEncoder.label = "Divergence"
         divEncoder.endEncoding()
         
         Swap(surface: &fluid.Divergence)
         
-        for _ in 0..<40
+        for _ in 0..<80
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
@@ -263,6 +267,7 @@ class ResourceManager2D : NSObject
             _c.setTexture(fluid.Pressure.Ping, index: 0)
             _c.setTexture(fluid.Pressure.Pong, index: 1)
             _c.setTexture(fluid.Divergence.Ping, index: 2)
+            _c.setTexture(obstacleTex!, index: 3)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             _c.label = "Jacobi"
             _c.endEncoding()
@@ -275,6 +280,7 @@ class ResourceManager2D : NSObject
         encoder3.setTexture(fluid.Velocity.Ping, index: 0)
         encoder3.setTexture(fluid.Velocity.Pong, index: 1)
         encoder3.setTexture(fluid.Pressure.Ping, index: 2)
+        encoder3.setTexture(obstacleTex!, index: 3)
         encoder3.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         encoder3.label = "Poisson Correction"
         encoder3.endEncoding()
