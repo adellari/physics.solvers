@@ -98,10 +98,10 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
     float2 textureSize = float2(temperatureOut.get_width(), temperatureOut.get_height());
     float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
-    float d = distance(float2(0.5, 0.08), uv);
+    float d = distance(float2(0.5, 0.1), uv);
     float impulse = 0.f;
     
-    if (d < 0.08)
+    if (d < 0.05)
     {
         float a = (0.1f - d) * 0.5f;   //
         impulse = min(a, 1.f);
@@ -154,7 +154,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     uS = obstS < 0.02f ? 0.f : uS;
     */
     
-    float divergence = (0.5f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
+    float divergence = (1.f) * (uE.x - uW.x + uN.y - uS.y); //multiply by the inverse cell size
     
     divergenceOut.write(float4(divergence, 0, 0, 0), position);
     //pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
@@ -227,7 +227,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
 kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[texture(0)]], texture2d<float, access::write> velocityOut [[texture(1)]], texture2d<float, access::read> pressureIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
 {
-    constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
+    constexpr sampler textureSampler(filter::linear, address::clamp_to_zero);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(velocityIn.get_width(), velocityIn.get_height());
     float2 texelSize = 1.f / textureSize;
@@ -251,11 +251,11 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 511 || obstE < 0.02f) pE = pC;
-    if (position.x <= 1 || obstW < 0.02f) pW = pC;
+    if (position.x >= 510 || obstE < 0.02f) pE = pC;
+    if (position.x <= 2 || obstW < 0.02f) pW = pC;
     
-    if (position.y >= 511 || obstN < 0.02f) pN = pC;
-    if (position.y <= 1 || obstS < 0.02f) pS = pC;
+    if (position.y >= 510 || obstN < 0.02f) pN = pC;
+    if (position.y <= 2 || obstS < 0.02f) pS = pC;
     /*
     pE = obstE < 0.02f ? pC : pE;
     pW = obstW < 0.02f ? pC : pW;
