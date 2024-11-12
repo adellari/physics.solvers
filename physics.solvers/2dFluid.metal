@@ -7,7 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 4.7f
+#define timestep 0.7f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
 #define _Sigma 1.0f               //smoke buoyancy
@@ -132,10 +132,10 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     uint2 E = position + uint2(1, 0);
 
     float2 uC = velocity.read(position).xy;
-    float2 uN = (velocity.read(N).xy + uC) / 2.f;
-    float2 uS = (velocity.read(S).xy + uC) / 2.f;
-    float2 uE = (velocity.read(E).xy + uC) / 2.f;
-    float2 uW = (velocity.read(W).xy + uC) / 2.f;
+    float2 uN = (velocity.read(N).xy) / 1.f;
+    float2 uS = (velocity.read(S).xy) / 1.f;
+    float2 uE = (velocity.read(E).xy) / 1.f;
+    float2 uW = (velocity.read(W).xy) / 1.f;
     half obstN = obstacles.read(N).x;
     half obstS = obstacles.read(S).x;
     half obstE = obstacles.read(E).x;
@@ -185,10 +185,10 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     
     //float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     float div = divergenceIn.read(position).r;
-    uint2 N = position + uint2(0, 2);
-    uint2 S = position + uint2(0, -2);
-    uint2 W = position + uint2(-2, 0);
-    uint2 E = position + uint2(2, 0);
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
+    uint2 W = position + uint2(-1, 0);
+    uint2 E = position + uint2(1, 0);
 
     float pN = pressureIn.read(N).r;
     float pS = pressureIn.read(S).r;
@@ -218,7 +218,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     ///and velocity is the gradient of pressure (potential)
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
-    float prime = (pW + pE + pS + pN +  -4 * div) * 0.25f;
+    float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
     pressureOut.write(float4(prime, prime, prime, prime), position);
     
 }
