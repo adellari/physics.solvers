@@ -7,11 +7,11 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#define timestep 0.7f
+#define timestep 1.7f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
-#define _Sigma 1.0f               //smoke buoyancy
-#define _Kappa 0.07f            //smoke weight
+#define _Sigma 4.2f               //smoke buoyancy
+#define _Kappa 2.9f            //smoke weight
 
 
 struct AdvectionParams{
@@ -47,7 +47,7 @@ struct JacobiParams{
 //advect temperature to velocity
 //advect dnesity to velocity
 
-kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
+kernel void Advection(texture2d<float, access::read> velocitySample [[texture(0)]], texture2d<float, access::sample> sourceSample [[texture(1)]], texture2d<float, access::write> sink [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], constant float& dissipation [[buffer(3)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
@@ -65,11 +65,11 @@ kernel void Advection(texture2d<float, access::sample> velocitySample [[texture(
     float2 newValue = dissipation * sourceSample.sample(textureSampler, newUV).xy;
     
     ///enforce the no-stick\free-slip boundary condition (at boundaries, velocity component ⊥ surface = 0)
-    if (position.x >= 511) newValue.x = 0.f;
-    if (position.x <= 1) newValue.x = 0.f;
+    if (position.x >= 500) newValue.x = 0.f;
+    if (position.x <= 12) newValue.x = 0.f;
     
-    if (position.y >= 511) newValue.y = 0.f;
-    if (position.y <= 1) newValue.y = 0.f;
+    if (position.y >= 500) newValue.y = 0.f;
+    if (position.y <= 12) newValue.y = 0.f;
     newValue *= obst < 0.02f ? 0.f : 1.f;
     
     sink.write(float4(newValue, newValue), position);
@@ -83,7 +83,7 @@ kernel void Buoyancy(texture2d<float, access::read> velocityIn [[texture(0)]], t
     
     if (Temperature > 0.f)
     {
-        float2 buoy = float2(0.f, timestep * Temperature * _Sigma - Density * _Kappa);
+        float2 buoy = float2(0.f, timestep * (Temperature * _Sigma - Density * _Kappa));
         currentVelocity += buoy;
     }
     
@@ -96,12 +96,12 @@ kernel void Impulse(texture2d<float, access::write> temperatureOut [[texture(0)]
     //constexpr sampler textureSampler(filter::nearest, address::clamp_to_edge);
     //position = uint2(position.x, 512 - position.y);
     float2 textureSize = float2(temperatureOut.get_width(), temperatureOut.get_height());
-    float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
+    float2 uv = float2((float)position.x / textureSize.x, (float)position.y / textureSize.y);
     
-    float d = distance(float2(0.5, 0.1), uv);
+    float d = distance(float2(0.5, 0.12), uv);
     float impulse = 0.f;
     
-    if (d < 0.05)
+    if (d < 0.1)
     {
         float a = (0.1f - d) * 0.5f;   //
         impulse = min(a, 1.f);
@@ -141,11 +141,11 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     half obstE = obstacles.read(E).x;
     half obstW = obstacles.read(W).x;
     
-    if (position.x >= 511 || obstE < 0.02f) uE.x = 0.f;
-    if (position.x <= 1 || obstW < 0.02f) uW.x = 0.f;
+    if (position.x >= 500 || obstE < 0.02f) uE.x = 0.f;
+    if (position.x <= 12 || obstW < 0.02f) uW.x = 0.f;
     
-    if (position.y >= 511 || obstN < 0.02f) uN.y = 0.f;
-    if (position.y <= 1 || obstS < 0.02f) uS.y = 0.f;
+    if (position.y >= 500 || obstN < 0.02f) uN.y = 0.f;
+    if (position.y <= 12 || obstS < 0.02f) uS.y = 0.f;
     
     /*
     uE = obstE < 0.02f ? 0.f : uE;
@@ -202,11 +202,11 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 510 || obstE < 0.02f) pE = pC;
-    if (position.x <= 2 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 || obstW < 0.02f) pW = pC;
     
-    if (position.y >= 510 || obstN < 0.02f) pN = pC;
-    if (position.y <= 2 || obstS < 0.02f) pS = pC;
+    if (position.y >= 500 || obstN < 0.02f) pN = pC;
+    if (position.y <= 12 || obstS < 0.02f) pS = pC;
     
     /*
     pE = obstE < 0.02f ? pC : pE;
@@ -251,19 +251,19 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 510 || obstE < 0.02f) pE = pC;
-    if (position.x <= 2 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 || obstW < 0.02f) pW = pC;
     
-    if (position.y >= 510 || obstN < 0.02f) pN = pC;
-    if (position.y <= 2 || obstS < 0.02f) pS = pC;
+    if (position.y >= 500 || obstN < 0.02f) pN = pC;
+    if (position.y <= 12 || obstS < 0.02f) pS = pC;
     /*
     pE = obstE < 0.02f ? pC : pE;
     pW = obstW < 0.02f ? pC : pW;
     pN = obstN < 0.02f ? pC : pN;
     pS = obstS < 0.02f ? pC : pS;
     */
-    float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
-    //float2 oldVelocity = velocityIn.read(position).xy;
+    //float2 oldVelocity = velocityIn.sample(textureSampler, uv).rg;
+    float2 oldVelocity = velocityIn.read(position).xy;
     float2 pGradient = float2(pE - pW, pN - pS) * 0.5f;
     float2 velocity = oldVelocity - pGradient;
     //velocity = normalize(velocity) * texelSize;

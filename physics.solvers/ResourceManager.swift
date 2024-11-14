@@ -196,7 +196,7 @@ class ResourceManager2D : NSObject
         Swap(surface: &fluid.Velocity)
 
         let advectTemperature = commandBuffer!.makeComputeCommandEncoder()!
-        diffuse = 0.99
+        diffuse = 0.90
         advectTemperature.setComputePipelineState(self.advectionPipeline)
         advectTemperature.setTexture(fluid.Velocity.Ping, index: 0)
         advectTemperature.setTexture(fluid.Temperature.Ping, index: 1)
@@ -210,7 +210,7 @@ class ResourceManager2D : NSObject
         Swap(surface: &fluid.Temperature)
 
         let advectDensity = commandBuffer!.makeComputeCommandEncoder()!
-        diffuse = 0.9999
+        diffuse = 0.9
         advectDensity.setComputePipelineState(self.advectionPipeline)
         advectDensity.setTexture(fluid.Velocity.Ping, index: 0)
         advectDensity.setTexture(fluid.Density.Ping, index: 1)
@@ -259,7 +259,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
-        for _ in 0..<80
+        for _ in 0..<20
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)

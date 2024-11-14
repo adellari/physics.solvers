@@ -12,7 +12,7 @@ struct ContentView: View {
     var counter : Int = 0
     var viewport : Viewport
     @State var horizontalValue : Double = 0.0
-    @State var verticalValue : Double = 0.0
+    @State var verticalValue : Double = 2.0
     
     var body: some View {
         VStack {

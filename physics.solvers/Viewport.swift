@@ -24,6 +24,7 @@ struct Viewport : NSViewRepresentable {
         var device : MTLDevice
         var commandQueue : MTLCommandQueue
         var chain : (Ping : MTLTexture, Pong : MTLTexture)?
+        var framesGenerated = 0
         
         init(viewport : Viewport, simulator : ResourceManager3D?, simulator2d : ResourceManager2D, renderer : Renderer?, sdf: MeshSDF?)
         {
@@ -65,9 +66,13 @@ struct Viewport : NSViewRepresentable {
             
              
             drawable.present()
-            
-            //MTLCaptureManager.shared().stopCapture()
+            if (framesGenerated == 6)
+            {
+                //MTLCaptureManager.shared().stopCapture()
+            }
+           
             //blit the result of the renderer to chainTex
+            framesGenerated += 1
         }
     }
     
@@ -81,11 +86,11 @@ struct Viewport : NSViewRepresentable {
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         view.frame = CGRect(x: 0, y: 0, width: dim.width, height: dim.height)
         context.coordinator.CreateChain(format: view.colorPixelFormat, size: dim)
-        /*
+        
         let captureManager = MTLCaptureManager.shared()
         let capDesc = MTLCaptureDescriptor()
         capDesc.captureObject = simulator2d.device
-        
+        /*
         do {
             try captureManager.startCapture(with: capDesc)
         }
