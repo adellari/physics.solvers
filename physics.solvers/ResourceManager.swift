@@ -259,7 +259,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
-        for _ in 0..<20
+        for _ in 0..<80
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)

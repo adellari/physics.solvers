@@ -10,7 +10,7 @@ using namespace metal;
 #define timestep 1.7f
 //#define DISSIPATION 0.99f
 //#define JACOBI_ITERATIONS 50
-#define _Sigma 4.2f               //smoke buoyancy
+#define _Sigma 5.2f               //smoke buoyancy
 #define _Kappa 2.9f            //smoke weight
 
 
@@ -219,7 +219,28 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
+    float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     pressureOut.write(float4(prime, prime, prime, prime), position);
+    
+}
+
+//jacobi
+//restrict to coarse grid
+//jacobi
+//prolong to fine grid
+//accumulate resultant pressure 
+//repeat
+
+kernel void Restrict(texture2d<float, access::sample> scaleUp [[texture(0)]], texture2d<float, access::write> scaleDown [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+{
+    constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
+    float2 uv = float2((float)position.x / scaleDown.get_width(), (float)position.y / scaleDown.get_height());
+    float residual = scaleUp.sample(textureSampler, uv).x;
+    scaleDown.write(float4(residual, residual, residual, 1), position);
+}
+
+kernel void Correction(texture2d<float, access::read> pressureCorrection [[texture(0)]], texture2d<float, access::write> pressureAccumulation [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+{
     
 }
 
