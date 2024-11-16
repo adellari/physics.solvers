@@ -224,11 +224,14 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     
 }
 
-//jacobi
+//jacobi - save the result as a guess y
 //restrict to coarse grid
-//jacobi
-//prolong to fine grid
-//accumulate resultant pressure 
+//solve the system of eqs Ax=yp
+//calculate the error e = (yp - y)
+//prolong error to the fine grid
+//correct y for error y = y + e
+//jacobi again
+//accumulate resultant pressure
 //repeat
 
 kernel void Restrict(texture2d<float, access::sample> scaleUp [[texture(0)]], texture2d<float, access::write> scaleDown [[texture(1)]], const uint2 position [[thread_position_in_grid]])
