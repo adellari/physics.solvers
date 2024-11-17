@@ -225,6 +225,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 }
 
 //jacobi - save the result as a guess y
+//compute residual r
 //restrict to coarse grid
 //solve the system of eqs Ax=yp
 //calculate the error e = (yp - y)
@@ -237,9 +238,20 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
 kernel void Restrict(texture2d<float, access::sample> scaleUp [[texture(0)]], texture2d<float, access::write> scaleDown [[texture(1)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
-    float2 uv = float2((float)position.x / scaleDown.get_width(), (float)position.y / scaleDown.get_height());
+    float2 uv = float2((float)position.x / (float)scaleDown.get_width(), (float)position.y / (float)scaleDown.get_height());
     float residual = scaleUp.sample(textureSampler, uv).x;
     scaleDown.write(float4(residual, residual, residual, 1), position);
+}
+
+kernel void ComputeError(texture2d<float, access::read> fine [[texture(0)]], texture2d<float, access::sample> coarse [[texture(1)]], texture2d<float, access::write> error [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+{
+    constexpr sampler textureSampler(filter::linear, address::clamp_to_edge);
+    float2 uv = float2((float)position.x/(float)fine.get_width(), (float)position.y/(float)fine.get_height());
+    float coarsePressure = coarse.sample(textureSampler, uv).r;
+    float finePressure = fine.read(position).r;
+    
+    float pressureError = coarsePressure - finePressure;
+    error.write(float4(pressureError, 1, 1, 1), position);
 }
 
 kernel void Correction(texture2d<float, access::read> pressureCorrection [[texture(0)]], texture2d<float, access::write> pressureAccumulation [[texture(1)]], const uint2 position [[thread_position_in_grid]])
