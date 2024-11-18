@@ -162,7 +162,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
 
 //jacobi iterations
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
+kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], const uint2 position [[thread_position_in_grid]])
 {
     //high level ( we're solving for a pressure field that satisfies the Pressure Poisson Eqation ∇²P(x) = 0 )
     //to this effect we start with initializing p to 0
@@ -221,7 +221,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
     float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     pressureOut.write(float4(prime, prime, prime, prime), position);
-    
+    residualOut.write(float4(residual, residual, residual, 1), position);
 }
 
 //jacobi - save the result as a guess y

@@ -36,6 +36,14 @@ class Fluid
         var Pong : MTLTexture
     }
     
+    struct GridSurface {
+        var Full : MTLTexture
+        var Half : MTLTexture
+        var Quarter : MTLTexture
+        var Eigth : MTLTexture
+        var Sixteenth : MTLTexture
+    }
+    
     var chain : MTLTexture?
     
     var Velocity : Surface
@@ -43,6 +51,9 @@ class Fluid
     var Density : Surface
     var Divergence : Surface
     var Pressure : Surface
+    var PressureGrid : GridSurface
+    var Residual : MTLTexture
+    
     
     var advectionParams : AdvectionParams
     var impulseParams : ImpulseParams
@@ -56,6 +67,16 @@ class Fluid
         let swapDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1024, height: 1024, mipmapped: true)
         let singleCDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 512, height: 512, mipmapped: false)
         
+        let gridHalfDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 256, height: 256, mipmapped: false)
+        let gridQuarterDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 128, height: 128, mipmapped: false)
+        let gridEigthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 64, height: 64, mipmapped: false)
+        let gridSixteenthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 32, height: 32, mipmapped: false)
+        
+        gridHalfDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridQuarterDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridEigthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridSixteenthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
         velocityDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
         velocityDesc.allowGPUOptimizedContents = true
         velocityDesc.compressionType = .lossless
@@ -67,12 +88,21 @@ class Fluid
         singleCDesc.allowGPUOptimizedContents = true
         singleCDesc.compressionType = .lossless
         
+        self.PressureGrid = GridSurface(Full: device.makeTexture(descriptor: singleCDesc)!, Half: device.makeTexture(descriptor: gridHalfDesc)!, Quarter: device.makeTexture(descriptor: gridQuarterDesc)!, Eigth: device.makeTexture(descriptor: gridEigthDesc)!, Sixteenth: device.makeTexture(descriptor: gridSixteenthDesc)!)
         self.Velocity = Surface(Ping: device.makeTexture(descriptor: velocityDesc)!, Pong: device.makeTexture(descriptor: velocityDesc)!)
         self.Pressure = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
         self.Divergence = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
         self.Temperature = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
         self.Density = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
+        self.Residual = device.makeTexture(descriptor: singleCDesc)!
         self.chain = device.makeTexture(descriptor: swapDesc)
+        
+        self.PressureGrid.Full.label = "Full Res Pressure"
+        self.PressureGrid.Half.label = "1/2 Res Pressure"
+        self.PressureGrid.Quarter.label = "1/4 Res Pressure"
+        self.PressureGrid.Eigth.label = "1/8 Res Pressure"
+        self.PressureGrid.Sixteenth.label = "1/16 Res Pressure"
+        self.Residual.label = "Residual"
         
         self.Velocity.Ping.label = "Velocity Ping"
         self.Velocity.Pong.label = "Velocity Pong"
@@ -92,7 +122,7 @@ class Fluid
         self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.99, dDissipation: 0.9999)
         self.impulseParams = ImpulseParams(origin: SIMD2<Float>(0.5, 0), radius: 0.1, iTemperature: 10, iDensity: 1, iAuxillary: 0)
         self.jacobiParams = JacobiParams(Alpha: -1.0, InvBeta: 0.25)
-
+        
         
     }
     
@@ -259,7 +289,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
-        for _ in 0..<80
+        for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
@@ -267,6 +297,7 @@ class ResourceManager2D : NSObject
             _c.setTexture(fluid.Pressure.Ping, index: 0)
             _c.setTexture(fluid.Pressure.Pong, index: 1)
             _c.setTexture(fluid.Divergence.Ping, index: 2)
+            _c.setTexture(fluid.Residual, index: 4)
             _c.setTexture(obstacleTex!, index: 3)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             _c.label = "Jacobi"
