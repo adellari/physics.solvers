@@ -309,6 +309,20 @@ class ResourceManager2D : NSObject
             
         }
         
+        let restrictions = [fluid.PressureGrid.Full, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
+        
+        for i in 1...restrictions.count
+        {
+            let threads = 512 / (2 * i);
+            let threadSize = MTLSize(width: threads/32, height: threads, depth: 1)
+            let restrictEncoder = commandBuffer!.makeComputeCommandEncoder()!
+            restrictEncoder.setComputePipelineState(self.restrictionPipeline)
+            restrictEncoder.setTexture(restrictions[i - 0], index: 0)
+            restrictEncoder.setTexture(restrictions[i], index: 1)
+            restrictEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadSize)
+            restrictEncoder.endEncoding()
+        }
+        
         let encoder3 = commandBuffer!.makeComputeCommandEncoder()!
         encoder3.setComputePipelineState(self.poissonPipeline)
         encoder3.setTexture(fluid.Velocity.Ping, index: 0)
