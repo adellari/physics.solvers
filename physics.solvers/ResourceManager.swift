@@ -163,6 +163,7 @@ class ResourceManager2D : NSObject
     var jacobiPipeline : MTLComputePipelineState
     var impulsePipeline : MTLComputePipelineState
     var divergencePipeline : MTLComputePipelineState
+    var restrictionPipeline : MTLComputePipelineState
     var constitutionPipeline : MTLComputePipelineState
     var constituteObstaclePipeline : MTLComputePipelineState
     var fluid : Fluid
@@ -183,6 +184,7 @@ class ResourceManager2D : NSObject
         let divergence = library.makeFunction(name: "Divergence")
         let constitution = library.makeFunction(name: "Constitution")
         let constituteObstacle = library.makeFunction(name: "ConstituteObstacle")
+        let restrict = library.makeFunction(name: "Restrict")
         
         self.jacobiPipeline = try library.device.makeComputePipelineState(function: jacobi!)
         self.advectionPipeline = try library.device.makeComputePipelineState(function: advection!)
@@ -192,6 +194,7 @@ class ResourceManager2D : NSObject
         self.constitutionPipeline = try library.device.makeComputePipelineState(function: constitution!)
         self.buoyancyPipeline = try library.device.makeComputePipelineState(function: buoyancy!)
         self.constituteObstaclePipeline = try library.device.makeComputePipelineState(function: constituteObstacle!)
+        self.restrictionPipeline = try library.device.makeComputePipelineState(function: restrict!)
         
         self.commandQueue = _device.makeCommandQueue()
         self.device = _device
