@@ -160,6 +160,60 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     //pressureOut.write(float4(0.f, 0.f, 0.f, 0.f), position);
 }
 
+//like a regular jacobi iterator, except we only operate on half
+//of the pressure grid (matrix) at a time.
+///Since algorithmically, we're doing id %2, can we just dispatch half of the typical threads and use the `redBlack` flag to
+///denote whether we're operating on red or black?
+kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::read> divergence [[texture(2)]], texture2d<float, access::read> obstacles [[texture(3)]], constant int& redBlack [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+{
+    float2 textureSize = float2(pressureIn.get_width(), pressureIn.get_height());
+    //float2 texelSize = 1.f / textureSize;
+    int order = int(position.y * textureSize.x + position.x);
+    if (order % 2 == redBlack)
+        return;
+
+    float div = divergence.read(position).r;
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
+    uint2 W = position + uint2(-1, 0);
+    uint2 E = position + uint2(1, 0);
+    
+    half obstN = obstacles.read(N).x;
+    half obstS = obstacles.read(S).x;
+    half obstE = obstacles.read(E).x;
+    half obstW = obstacles.read(W).x;
+    
+    float pC = pressureIn.read(position).r;
+    float pN = (position.y >= 500 || obstN < 0.02f) ? pC : pressureIn.read(N).r;
+    float pS = (position.y <= 12 || obstS < 0.02f) ? pC : pressureIn.read(S).r;
+    float pE = (position.x >= 500 || obstE < 0.02f) ? pC : pressureIn.read(E).r;
+    float pW = (position.x <= 12 || obstW < 0.02f) ? pC : pressureIn.read(W).r;
+    
+    
+    /*
+    if (position.x >= 500 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 || obstW < 0.02f) pW = pC;
+    
+    if (position.y >= 500 || obstN < 0.02f) pN = pC;
+    if (position.y <= 12 || obstS < 0.02f) pS = pC;
+    
+    
+    pE = obstE < 0.02f ? pC : pE;
+    pW = obstW < 0.02f ? pC : pW;
+    pN = obstN < 0.02f ? pC : pN;
+    pS = obstS < 0.02f ? pC : pS;
+    */
+    ///remember pressure/potential is the integral of velocity
+    ///and velocity is the gradient of pressure (potential)
+    ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
+
+    float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
+    float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
+    pressureOut.write(float4(prime, prime, prime, prime), position);
+    //residualOut.write(float4(residual, residual, residual, 1), position);
+    
+}
+
 //jacobi iterations
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
 kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], const uint2 position [[thread_position_in_grid]])

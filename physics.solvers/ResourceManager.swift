@@ -161,6 +161,7 @@ class ResourceManager2D : NSObject
     var buoyancyPipeline : MTLComputePipelineState
     var poissonPipeline : MTLComputePipelineState
     var jacobiPipeline : MTLComputePipelineState
+    var gsPipeline : MTLComputePipelineState
     var impulsePipeline : MTLComputePipelineState
     var divergencePipeline : MTLComputePipelineState
     var restrictionPipeline : MTLComputePipelineState
@@ -180,6 +181,7 @@ class ResourceManager2D : NSObject
         let buoyancy = library.makeFunction(name: "Buoyancy")
         let impulse = library.makeFunction(name: "Impulse")
         let jacobi = library.makeFunction(name: "Jacobi")
+        let gs = library.makeFunction(name: "GaussSeidel")
         let poisson = library.makeFunction(name: "PoissonCorrection")
         let divergence = library.makeFunction(name: "Divergence")
         let constitution = library.makeFunction(name: "Constitution")
@@ -187,6 +189,7 @@ class ResourceManager2D : NSObject
         let restrict = library.makeFunction(name: "Restrict")
         
         self.jacobiPipeline = try library.device.makeComputePipelineState(function: jacobi!)
+        self.gsPipeline = try library.device.makeComputePipelineState(function: gs!)
         self.advectionPipeline = try library.device.makeComputePipelineState(function: advection!)
         self.poissonPipeline = try library.device.makeComputePipelineState(function: poisson!)
         self.impulsePipeline = try library.device.makeComputePipelineState(function: impulse!)
@@ -292,6 +295,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
+        /*
         for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
@@ -308,16 +312,46 @@ class ResourceManager2D : NSObject
             Swap(surface: &fluid.Pressure)
             
         }
+        */
+        var redBlack : Int = 0
+        for _ in 0..<20
+        {
+            let _c = commandBuffer!.makeComputeCommandEncoder()!
+            _c.setComputePipelineState(self.gsPipeline)
+            _c.label = "Red Gauss Seidel"
+            redBlack = 0
+            _c.setBytes(&redBlack, length: MemoryLayout<Int>.size, index: 0)
+            _c.setTexture(fluid.Pressure.Ping, index: 0)
+            _c.setTexture(fluid.Pressure.Pong, index: 1)
+            _c.setTexture(fluid.Divergence.Ping, index: 2)
+            _c.setTexture(obstacleTex!, index: 3)
+            //_c.setTexture(fluid.Residual, index: 4)
+            _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+            
+            Swap(surface: &fluid.Pressure)
+            _c.label = "Black Gauss Seidel"
+            redBlack = 1
+            _c.setBytes(&redBlack, length: MemoryLayout<Int>.size, index: 0)
+            _c.setTexture(fluid.Pressure.Ping, index: 0)
+            _c.setTexture(fluid.Pressure.Pong, index: 1)
+            //_c.setTexture(fluid.Divergence.Ping, index: 2)
+            //_c.setTexture(obstacleTex!, index: 3)
+            //_c.setTexture(fluid.Residual, index: 4)
+            _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+            Swap(surface: &fluid.Pressure)
+            _c.endEncoding()
+            
+        }
         
-        let restrictions = [fluid.PressureGrid.Full, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
+        let restrictions = [fluid.Pressure.Pong, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
         
-        for i in 1...restrictions.count
+        for i in 1..<restrictions.count
         {
             let threads = 512 / (2 * i);
-            let threadSize = MTLSize(width: threads/32, height: threads, depth: 1)
+            let threadSize = MTLSize(width: threads/32, height: threads/32, depth: 1)
             let restrictEncoder = commandBuffer!.makeComputeCommandEncoder()!
             restrictEncoder.setComputePipelineState(self.restrictionPipeline)
-            restrictEncoder.setTexture(restrictions[i - 0], index: 0)
+            restrictEncoder.setTexture(restrictions[i - 1], index: 0)
             restrictEncoder.setTexture(restrictions[i], index: 1)
             restrictEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadSize)
             restrictEncoder.endEncoding()
