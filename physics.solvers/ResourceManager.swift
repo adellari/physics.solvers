@@ -314,7 +314,7 @@ class ResourceManager2D : NSObject
         }
         */
         var redBlack : Int = 0
-        for _ in 0..<20
+        for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.gsPipeline)
@@ -328,15 +328,15 @@ class ResourceManager2D : NSObject
             //_c.setTexture(fluid.Residual, index: 4)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             
+            ///this is properly swapping the textures
+            ///check to make sure this is being done serially - it does!
+
             Swap(surface: &fluid.Pressure)
             _c.label = "Black Gauss Seidel"
             redBlack = 1
             _c.setBytes(&redBlack, length: MemoryLayout<Int>.size, index: 0)
             _c.setTexture(fluid.Pressure.Ping, index: 0)
             _c.setTexture(fluid.Pressure.Pong, index: 1)
-            //_c.setTexture(fluid.Divergence.Ping, index: 2)
-            //_c.setTexture(obstacleTex!, index: 3)
-            //_c.setTexture(fluid.Residual, index: 4)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             Swap(surface: &fluid.Pressure)
             _c.endEncoding()

@@ -61,7 +61,7 @@ Ray CreateCameraRay(float2 uv, constant Camera& cam)
 
 void IntersectGroundPlane(Ray ray, thread RayHit* hit)
 {
-    float t = 0.01f -ray.origin.y / ray.direction.y;
+    float t = 0.01f - ray.origin.y / ray.direction.y;
     
     if (t < hit->distance && t > 0.f)
     {
