@@ -167,7 +167,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
 
 ///we first solve the even columns -> swap, such that Ping now contains solved even columns
 ///second, we solve odd columns, now odd columns can lookup solved even columns
-kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::read> divergence [[texture(2)]], texture2d<float, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], constant int& redBlack [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::read> divergence [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], constant int& redBlack [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
     float2 textureSize = float2(pressureIn.get_width(), pressureIn.get_height());
     //float2 texelSize = 1.f / textureSize;
