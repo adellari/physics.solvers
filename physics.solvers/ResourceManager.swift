@@ -164,6 +164,7 @@ class ResourceManager2D : NSObject
     var gsPipeline : MTLComputePipelineState
     var impulsePipeline : MTLComputePipelineState
     var divergencePipeline : MTLComputePipelineState
+    var residualPipeline : MTLComputePipelineState
     var restrictionPipeline : MTLComputePipelineState
     var constitutionPipeline : MTLComputePipelineState
     var constituteObstaclePipeline : MTLComputePipelineState
@@ -184,6 +185,7 @@ class ResourceManager2D : NSObject
         let gs = library.makeFunction(name: "GaussSeidel")
         let poisson = library.makeFunction(name: "PoissonCorrection")
         let divergence = library.makeFunction(name: "Divergence")
+        let residual = library.makeFunction(name: "Residual")
         let constitution = library.makeFunction(name: "Constitution")
         let constituteObstacle = library.makeFunction(name: "ConstituteObstacle")
         let restrict = library.makeFunction(name: "Restrict")
@@ -194,6 +196,7 @@ class ResourceManager2D : NSObject
         self.poissonPipeline = try library.device.makeComputePipelineState(function: poisson!)
         self.impulsePipeline = try library.device.makeComputePipelineState(function: impulse!)
         self.divergencePipeline = try library.device.makeComputePipelineState(function: divergence!)
+        self.residualPipeline = try library.device.makeComputePipelineState(function: residual!)
         self.constitutionPipeline = try library.device.makeComputePipelineState(function: constitution!)
         self.buoyancyPipeline = try library.device.makeComputePipelineState(function: buoyancy!)
         self.constituteObstaclePipeline = try library.device.makeComputePipelineState(function: constituteObstacle!)
@@ -343,6 +346,14 @@ class ResourceManager2D : NSObject
             
         }
          */
+        let residualEncoder = commandBuffer!.makeComputeCommandEncoder()!
+        residualEncoder.label = "Compute Residual"
+        residualEncoder.setComputePipelineState(self.residualPipeline)
+        residualEncoder.setTexture(fluid.Pressure.Ping, index: 0)
+        residualEncoder.setTexture(fluid.Divergence.Ping, index: 1)
+        residualEncoder.setTexture(fluid.Residual, index: 2)
+        residualEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        residualEncoder.endEncoding()
         /*
         let restrictions = [fluid.Pressure.Pong, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
         

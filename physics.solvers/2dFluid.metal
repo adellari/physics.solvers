@@ -167,7 +167,7 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
 
 ///we first solve the even columns -> swap, such that Ping now contains solved even columns
 ///second, we solve odd columns, now odd columns can lookup solved even columns
-kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::read> divergence [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], constant int& redBlack [[buffer(0)]], uint2 position [[thread_position_in_grid]])
+kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::read> divergence [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], constant int& redBlack [[buffer(0)]], uint2 position [[thread_position_in_grid]])
 {
     float2 textureSize = float2(pressureIn.get_width(), pressureIn.get_height());
     //float2 texelSize = 1.f / textureSize;
@@ -199,7 +199,7 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     float pW = (position.x <= 12  || obstW < 0.02f) ? 0 : pressureIn.read(W).r;
     
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
-    float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
+    //float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     
     ///should first go red, then black, works as expected
     /*
@@ -210,24 +210,27 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     }
     */
     pressureOut.write(float4(prime, prime, prime, prime), position);
-    
-    residualOut.write(float4(residual, residual, residual, 1), position);
+
     
 }
 
-kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::write> residual [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::read> divergence [[texture(1)]], texture2d<float, access::write> residual [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
-    uint2 W = position + uint2(-1, 0);
-    uint2 E = position + uint2(1, 0);
     uint2 N = position + uint2(0, 1);
     uint2 S = position + uint2(0, -1);
+    uint2 W = position + uint2(-1, 0);
+    uint2 E = position + uint2(1, 0);
     
     float pC = pressure.read(position).r;
-    float pW = (position.x <= 12 || position.x >= 500)? pC : pressure.read(W).r;
-    float pE = (position.x <= 12 || position.x >= 500)? pC : pressure.read(E).r;
-    float pN = (position.y <= 12 || position.y >= 500)? pC : pressure.read(W).r;
-    float pS = (position.y <= 12 || position.y >= 500)? pC : pressure.read(W).r;
+    float pW = pressure.read(W).r;
+    float pE = pressure.read(E).r;
+    float pN = pressure.read(W).r;
+    float pS = pressure.read(W).r;
     
+    float div = divergence.read(position).r;
+    float res = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
+    
+    residual.write(float4(res, res, res, 1), position);
 }
 
 //jacobi iterations
