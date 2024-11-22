@@ -295,7 +295,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
-        /*
+        
         for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
@@ -312,7 +312,7 @@ class ResourceManager2D : NSObject
             Swap(surface: &fluid.Pressure)
             
         }
-        */
+        /*
         var redBlack : Int = 0
         for _ in 0..<40
         {
@@ -342,7 +342,7 @@ class ResourceManager2D : NSObject
             _c.endEncoding()
             
         }
-         
+         */
         /*
         let restrictions = [fluid.Pressure.Pong, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
         

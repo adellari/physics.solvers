@@ -126,8 +126,8 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     //float2 uv = float2(position.x / textureSize.x, position.y / textureSize.y);
     
     
-    uint2 N = position + uint2(0, 1);
-    uint2 S = position + uint2(0, -1);
+    uint2 N = position + uint2(0, -1);
+    uint2 S = position + uint2(0, 1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -141,11 +141,11 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     half obstE = obstacles.read(E).x;
     half obstW = obstacles.read(W).x;
     
-    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) uE.x = 0.f;
-    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) uW.x = 0.f;
+    if (position.x >= 500 || obstE < 0.02f) uE.x = 0.f;
+    if (position.x <= 12 ||  obstW < 0.02f) uW.x = 0.f;
     
-    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) uN.y = 0.f;
-    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) uS.y = 0.f;
+    if (position.y <= 12 || obstN < 0.02f) uN.y = 0.f;
+    if (position.y >= 500 || obstS < 0.02f) uS.y = 0.f;
     
     /*
     uE = obstE < 0.02f ? 0.f : uE;
@@ -182,8 +182,8 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     
 
     float div = divergence.read(position).r;
-    uint2 N = position + uint2(0, 1);
-    uint2 S = position + uint2(0, -1);
+    uint2 N = position + uint2(0, -1);
+    uint2 S = position + uint2(0, 1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
     
@@ -193,10 +193,10 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     half obstW = obstacles.read(W).x;
     
     ///we're sampling north, and currently check if we're
-    float pN = (position.y >= 500 || position.y <= 12 || obstN < 0.02f) ? pC : pressureIn.read(N).r;
-    float pS = (position.y <= 12 || position.y >= 500 || obstS < 0.02f) ? pC : pressureIn.read(S).r;
-    float pE = (position.x >= 500 || position.x <= 12 || obstE < 0.02f) ? pC : pressureIn.read(E).r;
-    float pW = (position.x <= 12 || position.x >= 500 || obstW < 0.02f) ? pC : pressureIn.read(W).r;
+    float pN = (position.y <= 12 || obstN < 0.02f) ? 0 : pressureIn.read(N).r;
+    float pS = (position.y >= 500 || obstS < 0.02f) ? 0 : pressureIn.read(S).r;
+    float pE = (position.x >= 500 || obstE < 0.02f) ? 0 : pressureIn.read(E).r;
+    float pW = (position.x <= 12  || obstW < 0.02f) ? 0 : pressureIn.read(W).r;
     
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
     float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
@@ -255,8 +255,8 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     
     //float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     float div = divergenceIn.read(position).r;
-    uint2 N = position + uint2(0, 1);
-    uint2 S = position + uint2(0, -1);
+    uint2 N = position + uint2(0, -1);
+    uint2 S = position + uint2(0, 1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -272,11 +272,11 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) pE = pC;
-    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || obstE < 0.02f) pE = 0;
+    if (position.x <= 12 ||  obstW < 0.02f) pW = 0;
     
-    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) pN = pC;
-    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) pS = pC;
+    if (position.y <= 12 || obstN < 0.02f) pN = 0;
+    if (position.y >= 500 || obstS < 0.02f) pS = 0;
     
     /*
     pE = obstE < 0.02f ? pC : pE;
@@ -340,8 +340,8 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     
     float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
     
-    uint2 N = position + uint2(0, 1);
-    uint2 S = position + uint2(0, -1);
+    uint2 N = position + uint2(0, -1);
+    uint2 S = position + uint2(0, 1);
     uint2 W = position + uint2(-1, 0);
     uint2 E = position + uint2(1, 0);
 
@@ -357,11 +357,11 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) pE = pC;
-    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 ||  obstW < 0.02f) pW = pC;
     
-    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) pN = pC;
-    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) pS = pC;
+    if (position.y >= 500 || obstS < 0.02f) pS = pC;
+    if (position.y <= 12 ||  obstN < 0.02f) pN = pC;
     /*
     pE = obstE < 0.02f ? pC : pE;
     pW = obstW < 0.02f ? pC : pW;
@@ -372,8 +372,6 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     float2 oldVelocity = velocityIn.read(position).xy;
     float2 pGradient = float2(pE - pW, pN - pS) * 0.5f;
     float2 velocity = oldVelocity - pGradient;
-    //velocity = normalize(velocity) * texelSize;
-    //velocityOut.write(float4(-1, -1, 0, 1), position);           //testing uv thread position drift
     velocityOut.write(float4(velocity, velocity), position);
 }
 
