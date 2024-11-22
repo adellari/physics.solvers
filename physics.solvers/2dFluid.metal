@@ -178,7 +178,7 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
         pressureOut.write(float4(pC, pC, pC, 1), position);
         return;
     }
-    
+    //position = uint2(position.x * 2 + redBlack, position.y * 2 + redBlack);
     
 
     float div = divergence.read(position).r;
@@ -211,7 +211,7 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     */
     pressureOut.write(float4(prime, prime, prime, prime), position);
     
-    //residualOut.write(float4(residual, residual, residual, 1), position);
+    residualOut.write(float4(residual, residual, residual, 1), position);
     
 }
 

@@ -21,7 +21,7 @@ class MeshSDF
     var voxelGroups : MTLSize?
     var trisCount : Int?
     public var sliceIdx : Int = 0
-    private var commandedSlice : Int = 0
+    private var commandedSlice : Int = -1
     
     init(_device : MTLDevice, sharedQueue : MTLCommandQueue?) throws
     {
