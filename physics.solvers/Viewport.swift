@@ -68,7 +68,7 @@ struct Viewport : NSViewRepresentable {
             drawable.present()
             if (framesGenerated == 6)
             {
-                MTLCaptureManager.shared().stopCapture()
+                //MTLCaptureManager.shared().stopCapture()
             }
            
             //blit the result of the renderer to chainTex
@@ -91,12 +91,14 @@ struct Viewport : NSViewRepresentable {
         let capDesc = MTLCaptureDescriptor()
         capDesc.captureObject = simulator2d.device
         
+        /*
         do {
             try captureManager.startCapture(with: capDesc)
         }
         catch {
             fatalError("Failed to start Metal capture: \(error)")
         }
+        */
         
         return view
     }

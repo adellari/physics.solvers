@@ -141,11 +141,11 @@ kernel void Divergence(texture2d<float, access::read> velocity [[texture(0)]], t
     half obstE = obstacles.read(E).x;
     half obstW = obstacles.read(W).x;
     
-    if (position.x >= 500 || obstE < 0.02f) uE.x = 0.f;
-    if (position.x <= 12 || obstW < 0.02f) uW.x = 0.f;
+    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) uE.x = 0.f;
+    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) uW.x = 0.f;
     
-    if (position.y >= 500 || obstN < 0.02f) uN.y = 0.f;
-    if (position.y <= 12 || obstS < 0.02f) uS.y = 0.f;
+    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) uN.y = 0.f;
+    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) uS.y = 0.f;
     
     /*
     uE = obstE < 0.02f ? 0.f : uE;
@@ -171,7 +171,7 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
 {
     float2 textureSize = float2(pressureIn.get_width(), pressureIn.get_height());
     //float2 texelSize = 1.f / textureSize;
-    int order = int(position.y * textureSize.x + position.x);
+    int order = int(position.x + position.y);
     float pC = pressureIn.read(position).r;
     if (order % 2 == redBlack)
     {
@@ -192,11 +192,11 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     half obstE = obstacles.read(E).x;
     half obstW = obstacles.read(W).x;
     
-    
-    float pN = (position.y >= 500 || obstN < 0.02f) ? pC : pressureIn.read(N).r;
-    float pS = (position.y <= 12 || obstS < 0.02f) ? pC : pressureIn.read(S).r;
-    float pE = (position.x >= 500 || obstE < 0.02f) ? pC : pressureIn.read(E).r;
-    float pW = (position.x <= 12 || obstW < 0.02f) ? pC : pressureIn.read(W).r;
+    ///we're sampling north, and currently check if we're
+    float pN = (position.y >= 500 || position.y <= 12 || obstN < 0.02f) ? pC : pressureIn.read(N).r;
+    float pS = (position.y <= 12 || position.y >= 500 || obstS < 0.02f) ? pC : pressureIn.read(S).r;
+    float pE = (position.x >= 500 || position.x <= 12 || obstE < 0.02f) ? pC : pressureIn.read(E).r;
+    float pW = (position.x <= 12 || position.x >= 500 || obstW < 0.02f) ? pC : pressureIn.read(W).r;
     
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
     float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
@@ -212,6 +212,21 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     pressureOut.write(float4(prime, prime, prime, prime), position);
     
     residualOut.write(float4(residual, residual, residual, 1), position);
+    
+}
+
+kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::write> residual [[texture(1)]], const uint2 position [[thread_position_in_grid]])
+{
+    uint2 W = position + uint2(-1, 0);
+    uint2 E = position + uint2(1, 0);
+    uint2 N = position + uint2(0, 1);
+    uint2 S = position + uint2(0, -1);
+    
+    float pC = pressure.read(position).r;
+    float pW = (position.x <= 12 || position.x >= 500)? pC : pressure.read(W).r;
+    float pE = (position.x <= 12 || position.x >= 500)? pC : pressure.read(E).r;
+    float pN = (position.y <= 12 || position.y >= 500)? pC : pressure.read(W).r;
+    float pS = (position.y <= 12 || position.y >= 500)? pC : pressure.read(W).r;
     
 }
 
@@ -257,11 +272,11 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 500 || obstE < 0.02f) pE = pC;
-    if (position.x <= 12 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) pW = pC;
     
-    if (position.y >= 500 || obstN < 0.02f) pN = pC;
-    if (position.y <= 12 || obstS < 0.02f) pS = pC;
+    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) pN = pC;
+    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) pS = pC;
     
     /*
     pE = obstE < 0.02f ? pC : pE;
@@ -342,11 +357,11 @@ kernel void PoissonCorrection(texture2d<float, access::sample> velocityIn [[text
     half obstW = obstacles.read(W).x;
     
     
-    if (position.x >= 500 || obstE < 0.02f) pE = pC;
-    if (position.x <= 12 || obstW < 0.02f) pW = pC;
+    if (position.x >= 500 || position.x <= 12 || obstE < 0.02f) pE = pC;
+    if (position.x <= 12 || position.x >= 500 || obstW < 0.02f) pW = pC;
     
-    if (position.y >= 500 || obstN < 0.02f) pN = pC;
-    if (position.y <= 12 || obstS < 0.02f) pS = pC;
+    if (position.y >= 500 || position.y <= 12 || obstN < 0.02f) pN = pC;
+    if (position.y <= 12 || position.y >= 500 || obstS < 0.02f) pS = pC;
     /*
     pE = obstE < 0.02f ? pC : pE;
     pW = obstW < 0.02f ? pC : pW;
