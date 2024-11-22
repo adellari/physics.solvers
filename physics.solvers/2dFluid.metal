@@ -64,12 +64,12 @@ kernel void Advection(texture2d<float, access::read> velocitySample [[texture(0)
     float2 newUV = texelSize * (fragCoord - timestep * currentVelocity);
     float2 newValue = dissipation * sourceSample.sample(textureSampler, newUV).xy;
     
-    ///enforce the no-stick\free-slip boundary condition (at boundaries, velocity component ⊥ surface = 0)
-    if (position.x >= 500) newValue.x = 0.f;
-    if (position.x <= 12) newValue.x = 0.f;
+    ///enforce the no-slip boundary condition (at boundaries, velocity component ⊥ and parallel to surface = 0)
+    if (position.x >= 500) newValue = 0.f;
+    if (position.x <= 12) newValue = 0.f;
     
-    if (position.y >= 500) newValue.y = 0.f;
-    if (position.y <= 12) newValue.y = 0.f;
+    if (position.y >= 500) newValue = 0.f;
+    if (position.y <= 12) newValue = 0.f;
     newValue *= obst < 0.02f ? 0.f : 1.f;
     
     sink.write(float4(newValue, newValue), position);
