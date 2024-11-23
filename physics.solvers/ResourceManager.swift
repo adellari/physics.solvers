@@ -298,7 +298,7 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
-        
+         
         for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
@@ -315,6 +315,7 @@ class ResourceManager2D : NSObject
             Swap(surface: &fluid.Pressure)
             
         }
+        
         /*
         var redBlack : Int = 0
         for _ in 0..<40
@@ -328,7 +329,6 @@ class ResourceManager2D : NSObject
             _c.setTexture(fluid.Pressure.Pong, index: 1)
             _c.setTexture(fluid.Divergence.Ping, index: 2)
             _c.setTexture(obstacleTex!, index: 3)
-            _c.setTexture(fluid.Residual, index: 4)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
             Swap(surface: &fluid.Pressure)
             ///this is properly swapping the textures
@@ -345,7 +345,8 @@ class ResourceManager2D : NSObject
             _c.endEncoding()
             
         }
-         */
+        */
+        
         let residualEncoder = commandBuffer!.makeComputeCommandEncoder()!
         residualEncoder.label = "Compute Residual"
         residualEncoder.setComputePipelineState(self.residualPipeline)

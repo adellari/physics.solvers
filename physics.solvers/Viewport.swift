@@ -63,14 +63,30 @@ struct Viewport : NSViewRepresentable {
                 blitEncoder.endEncoding()
                 cmd.commit()
             }
-            
+            /*
+            if ( framesGenerated == 5)
+            {
+                let captureManager = MTLCaptureManager.shared()
+                let capDesc = MTLCaptureDescriptor()
+                capDesc.captureObject = simulator2d.device
+                
+                
+                do {
+                    try captureManager.startCapture(with: capDesc)
+                }
+                catch {
+                    fatalError("Failed to start Metal capture: \(error)")
+                }
+            }
+            */
              
             drawable.present()
+            /*
             if (framesGenerated == 6)
             {
-                //MTLCaptureManager.shared().stopCapture()
+                MTLCaptureManager.shared().stopCapture()
             }
-           
+           */
             //blit the result of the renderer to chainTex
             framesGenerated += 1
         }
@@ -87,18 +103,7 @@ struct Viewport : NSViewRepresentable {
         view.frame = CGRect(x: 0, y: 0, width: dim.width, height: dim.height)
         context.coordinator.CreateChain(format: view.colorPixelFormat, size: dim)
         
-        let captureManager = MTLCaptureManager.shared()
-        let capDesc = MTLCaptureDescriptor()
-        capDesc.captureObject = simulator2d.device
         
-        /*
-        do {
-            try captureManager.startCapture(with: capDesc)
-        }
-        catch {
-            fatalError("Failed to start Metal capture: \(error)")
-        }
-        */
         
         return view
     }

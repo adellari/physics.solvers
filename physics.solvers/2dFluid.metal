@@ -178,8 +178,6 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
         pressureOut.write(float4(pC, pC, pC, 1), position);
         return;
     }
-    //position = uint2(position.x * 2 + redBlack, position.y * 2 + redBlack);
-    
 
     float div = divergence.read(position).r;
     uint2 N = position + uint2(0, 1);
@@ -192,23 +190,13 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     half obstE = obstacles.read(E).x;
     half obstW = obstacles.read(W).x;
     
-    ///we're sampling north, and currently check if we're
-    float pN = (position.y <= 12 || obstN < 0.02f) ? 0 : pressureIn.read(N).r;
-    float pS = (position.y >= 500 || obstS < 0.02f) ? 0 : pressureIn.read(S).r;
+
+    float pS = (position.y <= 12 || obstS < 0.02f) ? 0 : pressureIn.read(S).r;
+    float pN = (position.y >= 500 || obstN < 0.02f) ? 0 : pressureIn.read(N).r;
     float pE = (position.x >= 500 || obstE < 0.02f) ? 0 : pressureIn.read(E).r;
     float pW = (position.x <= 12  || obstW < 0.02f) ? 0 : pressureIn.read(W).r;
     
     float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
-    //float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
-    
-    ///should first go red, then black, works as expected
-    /*
-    if (position.x == 0){
-        if (pC > 0.5f)
-            prime = 0.f;
-        else prime = 1.f;
-    }
-    */
     pressureOut.write(float4(prime, prime, prime, prime), position);
 
     
@@ -224,8 +212,8 @@ kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], tex
     float pC = pressure.read(position).r;
     float pW = pressure.read(W).r;
     float pE = pressure.read(E).r;
-    float pN = pressure.read(W).r;
-    float pS = pressure.read(W).r;
+    float pN = pressure.read(N).r;
+    float pS = pressure.read(S).r;
     
     float div = divergence.read(position).r;
     float res = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
@@ -235,7 +223,7 @@ kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], tex
 
 //jacobi iterations
 //output: (r) pressure | (g) temperature | (b) density | (a) divergence
-kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], texture2d<float, access::write> residualOut [[texture(4)]], const uint2 position [[thread_position_in_grid]])
+kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], texture2d<float, access::write> pressureOut [[texture(1)]], texture2d<float, access::sample> divergenceIn [[texture(2)]], texture2d<half, access::read> obstacles [[texture(3)]], const uint2 position [[thread_position_in_grid]])
 {
     //high level ( we're solving for a pressure field that satisfies the Pressure Poisson Eqation ∇²P(x) = 0 )
     //to this effect we start with initializing p to 0
@@ -291,10 +279,10 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     ///and velocity is the gradient of pressure (potential)
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
-    float prime = (pW + pE + pS + pN +  -1 * div) * 0.25f;
-    float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
+    float prime = (-div/4.f) + (pW + pE + pS + pN + pC)/5.f;
+    //float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     pressureOut.write(float4(prime, prime, prime, prime), position);
-    residualOut.write(float4(residual, residual, residual, 1), position);
+    //residualOut.write(float4(residual, residual, residual, 1), position);
 }
 
 //jacobi - save the result as a guess y
