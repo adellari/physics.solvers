@@ -37,11 +37,11 @@ class Fluid
     }
     
     struct GridSurface {
-        var Full : MTLTexture
-        var Half : MTLTexture
-        var Quarter : MTLTexture
-        var Eigth : MTLTexture
-        var Sixteenth : MTLTexture
+        var Full : Surface
+        var Half : Surface
+        var Quarter : Surface
+        var Eigth : Surface
+        var Sixteenth : Surface
     }
     
     var chain : MTLTexture?
@@ -97,11 +97,11 @@ class Fluid
         self.Residual = device.makeTexture(descriptor: singleCDesc)!
         self.chain = device.makeTexture(descriptor: swapDesc)
         
-        self.PressureGrid.Full.label = "Full Res Pressure"
-        self.PressureGrid.Half.label = "1/2 Res Pressure"
-        self.PressureGrid.Quarter.label = "1/4 Res Pressure"
-        self.PressureGrid.Eigth.label = "1/8 Res Pressure"
-        self.PressureGrid.Sixteenth.label = "1/16 Res Pressure"
+        self.PressureGrid.Full.Ping.label = "Full Res Residual Ping"
+        self.PressureGrid.Half.Ping.label = "1/2 Res Residual Ping"
+        self.PressureGrid.Quarter.Ping.label = "1/4 Res Residual Ping"
+        self.PressureGrid.Eigth.Ping.label = "1/8 Res Residual Ping"
+        self.PressureGrid.Sixteenth.Ping.label = "1/16 Res Residual Ping"
         self.Residual.label = "Residual"
         
         self.Velocity.Ping.label = "Velocity Ping"
@@ -215,6 +215,23 @@ class ResourceManager2D : NSObject
         surface.Pong = temp
     }
     
+    func MultigridCycle(cmdBuffer : MTLCommandBuffer, )
+    {
+        //apply weighted jacobi or red black gauss seidel
+        //calculate residual
+        //restrict residual
+        //apply (several iterations) jacobi or rgbs
+        //(calculate the residual?) at some point are we calculating the residual of residual??
+        for i in 0...10
+        {
+            let jacobiEncoder = cmdBuffer.makeComputeCommandEncoder()!
+            jacobiEncoder.setComputePipelineState(self.jacobiPipeline)
+            jacobiEncoder.setTexture(
+        }
+        
+        //the result of all iterations is our error
+    }
+    
     func Simulate(obstacleTex : MTLTexture? = nil, chainOutput : MTLTexture? = nil) -> MTLTexture?
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
@@ -299,7 +316,7 @@ class ResourceManager2D : NSObject
         Swap(surface: &fluid.Divergence)
         
          
-        for _ in 0..<40
+        for _ in 0..<20
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
@@ -315,6 +332,8 @@ class ResourceManager2D : NSObject
             Swap(surface: &fluid.Pressure)
             
         }
+        
+        
         
         /*
         var redBlack : Int = 0
@@ -355,7 +374,8 @@ class ResourceManager2D : NSObject
         residualEncoder.setTexture(fluid.Residual, index: 2)
         residualEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         residualEncoder.endEncoding()
-        /*
+        
+        
         let restrictions = [fluid.Pressure.Pong, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
         
         for i in 1..<restrictions.count
@@ -369,7 +389,7 @@ class ResourceManager2D : NSObject
             restrictEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadSize)
             restrictEncoder.endEncoding()
         }
-        */
+        
         
         let encoder3 = commandBuffer!.makeComputeCommandEncoder()!
         encoder3.setComputePipelineState(self.poissonPipeline)

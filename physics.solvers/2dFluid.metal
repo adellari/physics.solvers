@@ -279,7 +279,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     ///and velocity is the gradient of pressure (potential)
     ///here we're saying the pressure (potential) is equal to p = (-4divergence + left_left + right_right + up_up + down_down) / 4
 
-    float prime = (-div/4.f) + (pW + pE + pS + pN + pC)/5.f;
+    float prime = (-div/5.f) + (pW + pE + pS + pN + pC)/5.f;
     //float residual = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     pressureOut.write(float4(prime, prime, prime, prime), position);
     //residualOut.write(float4(residual, residual, residual, 1), position);
