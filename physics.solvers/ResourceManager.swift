@@ -40,7 +40,7 @@ class Fluid
         var Full : Surface
         var Half : Surface
         var Quarter : Surface
-        var Eigth : Surface
+        var Eighth : Surface
         var Sixteenth : Surface
     }
     
@@ -51,7 +51,7 @@ class Fluid
     var Density : Surface
     var Divergence : Surface
     var Pressure : Surface
-    var PressureGrid : GridSurface
+    var ResidualGrid : GridSurface
     var Residual : MTLTexture
     
     
@@ -61,47 +61,18 @@ class Fluid
     
     //pressure, temperature, density, divergence
     
-    init(device: MTLDevice)
+    func LabelSurfaces()
     {
-        let velocityDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
-        let swapDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1024, height: 1024, mipmapped: true)
-        let singleCDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 512, height: 512, mipmapped: false)
-        
-        let gridHalfDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 256, height: 256, mipmapped: false)
-        let gridQuarterDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 128, height: 128, mipmapped: false)
-        let gridEigthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 64, height: 64, mipmapped: false)
-        let gridSixteenthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 32, height: 32, mipmapped: false)
-        
-        gridHalfDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        gridQuarterDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        gridEigthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        gridSixteenthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        
-        velocityDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        velocityDesc.allowGPUOptimizedContents = true
-        velocityDesc.compressionType = .lossless
-
-        swapDesc.usage = MTLTextureUsage([.shaderWrite, .shaderRead])
-        swapDesc.mipmapLevelCount = 2
-        
-        singleCDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
-        singleCDesc.allowGPUOptimizedContents = true
-        singleCDesc.compressionType = .lossless
-        
-        self.PressureGrid = GridSurface(Full: device.makeTexture(descriptor: singleCDesc)!, Half: device.makeTexture(descriptor: gridHalfDesc)!, Quarter: device.makeTexture(descriptor: gridQuarterDesc)!, Eigth: device.makeTexture(descriptor: gridEigthDesc)!, Sixteenth: device.makeTexture(descriptor: gridSixteenthDesc)!)
-        self.Velocity = Surface(Ping: device.makeTexture(descriptor: velocityDesc)!, Pong: device.makeTexture(descriptor: velocityDesc)!)
-        self.Pressure = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
-        self.Divergence = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
-        self.Temperature = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
-        self.Density = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
-        self.Residual = device.makeTexture(descriptor: singleCDesc)!
-        self.chain = device.makeTexture(descriptor: swapDesc)
-        
-        self.PressureGrid.Full.Ping.label = "Full Res Residual Ping"
-        self.PressureGrid.Half.Ping.label = "1/2 Res Residual Ping"
-        self.PressureGrid.Quarter.Ping.label = "1/4 Res Residual Ping"
-        self.PressureGrid.Eigth.Ping.label = "1/8 Res Residual Ping"
-        self.PressureGrid.Sixteenth.Ping.label = "1/16 Res Residual Ping"
+        self.ResidualGrid.Full.Ping.label = "Full Res Residual Ping"
+        self.ResidualGrid.Half.Ping.label = "1/2 Res Residual Ping"
+        self.ResidualGrid.Quarter.Ping.label = "1/4 Res Residual Ping"
+        self.ResidualGrid.Eighth.Ping.label = "1/8 Res Residual Ping"
+        self.ResidualGrid.Sixteenth.Ping.label = "1/16 Res Residual Ping"
+        self.ResidualGrid.Full.Pong.label = "Full Res Residual Pong"
+        self.ResidualGrid.Half.Pong.label = "1/2 Res Residual Pong"
+        self.ResidualGrid.Quarter.Pong.label = "1/4 Res Residual Pong"
+        self.ResidualGrid.Eighth.Pong.label = "1/8 Res Residual Pong"
+        self.ResidualGrid.Sixteenth.Pong.label = "1/16 Res Residual Pong"
         self.Residual.label = "Residual"
         
         self.Velocity.Ping.label = "Velocity Ping"
@@ -118,11 +89,56 @@ class Fluid
         
         self.Divergence.Ping.label = "Divergence Ping"
         self.Divergence.Pong.label = "Divergence Pong"
+    }
+    
+    init(device: MTLDevice)
+    {
+        let velocityDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg32Float, width: 512, height: 512, mipmapped: false)
+        let swapDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1024, height: 1024, mipmapped: true)
+        let singleCDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 512, height: 512, mipmapped: false)
+        
+        let gridHalfDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 256, height: 256, mipmapped: false)
+        let gridQuarterDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 128, height: 128, mipmapped: false)
+        let gridEighthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 64, height: 64, mipmapped: false)
+        let gridSixteenthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r32Float, width: 32, height: 32, mipmapped: false)
+        
+        gridHalfDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridQuarterDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridEighthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        gridSixteenthDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        
+        velocityDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        velocityDesc.allowGPUOptimizedContents = true
+        velocityDesc.compressionType = .lossless
+
+        swapDesc.usage = MTLTextureUsage([.shaderWrite, .shaderRead])
+        swapDesc.mipmapLevelCount = 2
+        
+        singleCDesc.usage = MTLTextureUsage([.shaderRead, .shaderWrite])
+        singleCDesc.allowGPUOptimizedContents = true
+        singleCDesc.compressionType = .lossless
+        
+        let fullSurface = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor : singleCDesc)!)
+        let halfSurface = Surface(Ping: device.makeTexture(descriptor: gridHalfDesc)!, Pong: device.makeTexture(descriptor: gridHalfDesc)!)
+        let quarterSurface = Surface(Ping: device.makeTexture(descriptor: gridQuarterDesc)!, Pong: device.makeTexture(descriptor: gridQuarterDesc)!)
+        let eighthSurface = Surface(Ping: device.makeTexture(descriptor: gridEighthDesc)!, Pong: device.makeTexture(descriptor: gridEighthDesc)!)
+        let sixteenthSurface = Surface(Ping: device.makeTexture(descriptor: gridSixteenthDesc)!, Pong: device.makeTexture(descriptor: gridSixteenthDesc)!)
+        
+        self.ResidualGrid = GridSurface(Full: fullSurface, Half: halfSurface, Quarter: quarterSurface, Eighth: eighthSurface, Sixteenth: sixteenthSurface)
+        self.Velocity = Surface(Ping: device.makeTexture(descriptor: velocityDesc)!, Pong: device.makeTexture(descriptor: velocityDesc)!)
+        self.Pressure = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
+        self.Divergence = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
+        self.Temperature = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
+        self.Density = Surface(Ping: device.makeTexture(descriptor: singleCDesc)!, Pong: device.makeTexture(descriptor: singleCDesc)!)
+        self.Residual = device.makeTexture(descriptor: singleCDesc)!
+        self.chain = device.makeTexture(descriptor: swapDesc)
+    
         
         self.advectionParams = AdvectionParams(uDissipation: 0.99999, tDissipation: 0.99, dDissipation: 0.9999)
         self.impulseParams = ImpulseParams(origin: SIMD2<Float>(0.5, 0), radius: 0.1, iTemperature: 10, iDensity: 1, iAuxillary: 0)
         self.jacobiParams = JacobiParams(Alpha: -1.0, InvBeta: 0.25)
         
+        LabelSurfaces()
         
     }
     
@@ -169,6 +185,7 @@ class ResourceManager2D : NSObject
     var constitutionPipeline : MTLComputePipelineState
     var constituteObstaclePipeline : MTLComputePipelineState
     var fluid : Fluid
+    var obstacles : MTLTexture?
     //var metalView : MTKView
     var frames = 0
     
@@ -215,27 +232,56 @@ class ResourceManager2D : NSObject
         surface.Pong = temp
     }
     
-    func MultigridCycle(cmdBuffer : MTLCommandBuffer, )
+    ///[Full, Half, Quarter, Eighth, Sixteenth]
+    func MultigridCycle(cmdBuffer : MTLCommandBuffer, inSurface : inout Fluid.Surface, outSurface : inout Fluid.Surface)
     {
         //apply weighted jacobi or red black gauss seidel
         //calculate residual
         //restrict residual
         //apply (several iterations) jacobi or rgbs
-        //(calculate the residual?) at some point are we calculating the residual of residual??
-        for i in 0...10
+        //(calculate the residual?) at some point are we calculating the residual of residual?? - yes!
+        var threadsSize = MTLSize(width: inSurface.Ping.width/32, height: inSurface.Ping.height/32, depth: 1)
+        //smooth
+        for i in 0...5
         {
             let jacobiEncoder = cmdBuffer.makeComputeCommandEncoder()!
             jacobiEncoder.setComputePipelineState(self.jacobiPipeline)
-            jacobiEncoder.setTexture(
+            jacobiEncoder.label = "Weighted Jacobi \(i)"
+            jacobiEncoder.setTexture(inSurface.Ping, index: 0)
+            jacobiEncoder.setTexture(inSurface.Pong, index: 1)
+            jacobiEncoder.setTexture(fluid.Divergence.Ping, index: 2)
+            jacobiEncoder.setTexture(obstacles!, index: 3)
+            jacobiEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
+            jacobiEncoder.endEncoding()
+            Swap(surface: &inSurface)
         }
         
+        //compute residual
+        let residualEncoder = cmdBuffer.makeComputeCommandEncoder()!
+        residualEncoder.setComputePipelineState(self.residualPipeline)
+        residualEncoder.label = "Compute Residual"
+        residualEncoder.setTexture(inSurface.Ping, index: 0)
+        residualEncoder.setTexture(fluid.Divergence.Ping, index: 1)
+        residualEncoder.setTexture(inSurface.Pong, index: 2)
+        residualEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
+        residualEncoder.endEncoding()
+        
+        threadsSize = MTLSize(width: outSurface.Ping.width/32, height: outSurface.Ping.height/32, depth: 1)
+        
+        let restrictEncoder = cmdBuffer.makeComputeCommandEncoder()!
+        restrictEncoder.setComputePipelineState(self.restrictionPipeline)
+        restrictEncoder.label = "Restrict"
+        restrictEncoder.setTexture(inSurface.Pong, index: 0)
+        restrictEncoder.setTexture(outSurface.Ping, index: 1)
+        restrictEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
+        restrictEncoder.endEncoding()
         //the result of all iterations is our error
     }
     
     func Simulate(obstacleTex : MTLTexture? = nil, chainOutput : MTLTexture? = nil) -> MTLTexture?
     {
         let commandBuffer = commandQueue!.makeCommandBuffer()
-        
+        obstacles = obstacleTex
         
         let advectVelocity = commandBuffer!.makeComputeCommandEncoder()!
         var diffuse : Float32 = 0.99
@@ -327,14 +373,31 @@ class ResourceManager2D : NSObject
             _c.setTexture(fluid.Residual, index: 4)
             _c.setTexture(obstacleTex!, index: 3)
             _c.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
-            _c.label = "Jacobi"
+            _c.label = "Pre-Smoothing"
             _c.endEncoding()
             Swap(surface: &fluid.Pressure)
             
         }
         
+        let residualEncoder = commandBuffer!.makeComputeCommandEncoder()!
+        residualEncoder.setComputePipelineState(self.residualPipeline)
+        residualEncoder.label = "Compute Pressure Residual"
+        residualEncoder.setTexture(fluid.ResidualGrid.Full.Ping, index: 2)
+        residualEncoder.setTexture(fluid.Divergence.Ping, index: 1)
+        residualEncoder.setTexture(fluid.Pressure.Ping, index: 0)
+        residualEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
+        residualEncoder.endEncoding()
         
+        var gridLevels = [fluid.ResidualGrid.Full, fluid.ResidualGrid.Half, fluid.ResidualGrid.Quarter, fluid.ResidualGrid.Eighth, fluid.ResidualGrid.Sixteenth]
         
+        for i in 0..<gridLevels.count - 1
+        {
+            var inSurf = gridLevels[i]
+            var outSurf = gridLevels[i+1]
+            MultigridCycle(cmdBuffer: commandBuffer!, inSurface: &inSurf, outSurface: &outSurf)
+            gridLevels[i] = inSurf
+            gridLevels[i+1] = outSurf
+        }
         /*
         var redBlack : Int = 0
         for _ in 0..<40
@@ -366,23 +429,16 @@ class ResourceManager2D : NSObject
         }
         */
         
-        let residualEncoder = commandBuffer!.makeComputeCommandEncoder()!
-        residualEncoder.label = "Compute Residual"
-        residualEncoder.setComputePipelineState(self.residualPipeline)
-        residualEncoder.setTexture(fluid.Pressure.Ping, index: 0)
-        residualEncoder.setTexture(fluid.Divergence.Ping, index: 1)
-        residualEncoder.setTexture(fluid.Residual, index: 2)
-        residualEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
-        residualEncoder.endEncoding()
         
-        
-        let restrictions = [fluid.Pressure.Pong, fluid.PressureGrid.Half, fluid.PressureGrid.Quarter, fluid.PressureGrid.Eigth, fluid.PressureGrid.Sixteenth]
+        /*
+        let restrictions = [fluid.Pressure.Pong, fluid.ResidualGrid.Half, fluid.ResidualGrid.Quarter, fluid.ResidualGrid.Eighth, fluid.ResidualGrid.Sixteenth]
         
         for i in 1..<restrictions.count
         {
             let threads = 512 / (2 * i);
             let threadSize = MTLSize(width: threads/32, height: threads/32, depth: 1)
             let restrictEncoder = commandBuffer!.makeComputeCommandEncoder()!
+            MultigridCycle(cmdBuffer: commandBuffer, )
             restrictEncoder.setComputePipelineState(self.restrictionPipeline)
             restrictEncoder.setTexture(restrictions[i - 1], index: 0)
             restrictEncoder.setTexture(restrictions[i], index: 1)
@@ -390,7 +446,7 @@ class ResourceManager2D : NSObject
             restrictEncoder.endEncoding()
         }
         
-        
+        */
         let encoder3 = commandBuffer!.makeComputeCommandEncoder()!
         encoder3.setComputePipelineState(self.poissonPipeline)
         encoder3.setTexture(fluid.Velocity.Ping, index: 0)

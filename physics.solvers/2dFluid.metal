@@ -202,8 +202,12 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     
 }
 
-kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::read> divergence [[texture(1)]], texture2d<float, access::write> residual [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::sample> divergence [[texture(1)]], texture2d<float, access::write> residual [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
+    constexpr sampler divergenceSampler(filter::linear, address::clamp_to_zero);
+    float2 textureSize = float2((float)pressure.get_width(), (float)pressure.get_height());
+    float2 uv = float2((float)position.x/textureSize.x, (float)position.y/textureSize.y);
+    
     uint2 N = position + uint2(0, 1);
     uint2 S = position + uint2(0, -1);
     uint2 W = position + uint2(-1, 0);
@@ -215,7 +219,7 @@ kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], tex
     float pN = pressure.read(N).r;
     float pS = pressure.read(S).r;
     
-    float div = divergence.read(position).r;
+    float div = divergence.sample(divergenceSampler, uv).r;
     float res = (pW + pE + pS + pN + (-1 * div) - (4 * pC));
     
     residual.write(float4(res, res, res, 1), position);
@@ -232,7 +236,7 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     //continue for ITER num of jacobian steps
     //getting closer to convergence
     //constexpr sampler jacobiSampler(filter::nearest, address::clamp_to_edge);
-    //constexpr sampler divergenceSampler(filter::bicubic, address::clamp_to_zero);
+    constexpr sampler divergenceSampler(filter::linear, address::clamp_to_zero);
     
     //runs ITER number of times
     //sample the pressure texture, perform calcualtions on this value
@@ -244,8 +248,8 @@ kernel void Jacobi(texture2d<float, access::read> pressureIn [[texture(0)]], tex
     //float alpha = jacobiParams->Alpha;
     //float invB = jacobiParams->InvBeta;
     
-    //float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
-    float div = divergenceIn.read(position).r;
+    float2 uv = float2(position.x * texelSize.x, position.y * texelSize.y);
+    float div = divergenceIn.sample(divergenceSampler, uv).r;
     uint2 N = position + uint2(0, 1);
     uint2 S = position + uint2(0, -1);
     uint2 W = position + uint2(-1, 0);
