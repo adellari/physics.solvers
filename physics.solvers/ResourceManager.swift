@@ -182,6 +182,7 @@ class ResourceManager2D : NSObject
     var divergencePipeline : MTLComputePipelineState
     var residualPipeline : MTLComputePipelineState
     var restrictionPipeline : MTLComputePipelineState
+    var prolongationPipeline : MTLComputePipelineState
     var constitutionPipeline : MTLComputePipelineState
     var constituteObstaclePipeline : MTLComputePipelineState
     var fluid : Fluid
@@ -206,6 +207,7 @@ class ResourceManager2D : NSObject
         let constitution = library.makeFunction(name: "Constitution")
         let constituteObstacle = library.makeFunction(name: "ConstituteObstacle")
         let restrict = library.makeFunction(name: "Restrict")
+        let prolongate = library.makeFunction(name: "Prolongate")
         
         self.jacobiPipeline = try library.device.makeComputePipelineState(function: jacobi!)
         self.gsPipeline = try library.device.makeComputePipelineState(function: gs!)
@@ -218,6 +220,7 @@ class ResourceManager2D : NSObject
         self.buoyancyPipeline = try library.device.makeComputePipelineState(function: buoyancy!)
         self.constituteObstaclePipeline = try library.device.makeComputePipelineState(function: constituteObstacle!)
         self.restrictionPipeline = try library.device.makeComputePipelineState(function: restrict!)
+        self.prolongationPipeline = try library.device.makeComputePipelineState(function: prolongate!)
         
         self.commandQueue = _device.makeCommandQueue()
         self.device = _device
@@ -233,7 +236,7 @@ class ResourceManager2D : NSObject
     }
     
     ///[Full, Half, Quarter, Eighth, Sixteenth]
-    func MultigridCycle(cmdBuffer : MTLCommandBuffer, inSurface : inout Fluid.Surface, outSurface : inout Fluid.Surface)
+    func MGRestrictLevel(cmdBuffer : MTLCommandBuffer, inSurface : inout Fluid.Surface, outSurface : inout Fluid.Surface)
     {
         //apply weighted jacobi or red black gauss seidel
         //calculate residual
@@ -257,6 +260,8 @@ class ResourceManager2D : NSObject
         }
         
         //compute residual
+        //x is stored in Ping
+        //residual is stored in Pong
         let residualEncoder = cmdBuffer.makeComputeCommandEncoder()!
         residualEncoder.setComputePipelineState(self.residualPipeline)
         residualEncoder.label = "Compute Residual"
@@ -276,6 +281,32 @@ class ResourceManager2D : NSObject
         restrictEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
         restrictEncoder.endEncoding()
         //the result of all iterations is our error
+    }
+    
+    //apply weighted jacobi on restriction
+    //prolong the residual to a higher level
+    //add the prolonged residual to the
+    //new level's existing solution
+    //repeat
+    func MGProlongateLevel(cmdBuffer : MTLCommandBuffer, inSurface : inout Fluid.Surface, outSurface : inout Fluid.Surface)
+    {
+        var threadsSize = MTLSize(width: inSurface.Ping.width/32, height: inSurface.Ping.height/32, depth: 1)
+        //iterate on prior level's residual
+        let smoothEncoder = cmdBuffer.makeComputeCommandEncoder()!
+        smoothEncoder.setComputePipelineState(self.jacobiPipeline)
+        smoothEncoder.label = "Prolongation Smoothing"
+        smoothEncoder.setTexture(inSurface.Ping, index: 0)
+        smoothEncoder.setTexture(inSurface.Pong, index: 1)
+        //dispatch
+        smoothEncoder.endEncoding()
+        
+        let prolongateEncoder = cmdBuffer.makeComputeCommandEncoder()!
+        prolongateEncoder.setComputePipelineState(self.prolongationPipeline)
+        prolongateEncoder.setTexture(inSurface.Pong, index: 0)
+        prolongateEncoder.setTexture(outSurface.Ping, index: 1) //level up solution
+        prolongateEncoder.setTexture(outSurface.Ping, index: 2)
+        //dispatch
+        prolongateEncoder.endEncoding()
     }
     
     func Simulate(obstacleTex : MTLTexture? = nil, chainOutput : MTLTexture? = nil) -> MTLTexture?
@@ -394,7 +425,7 @@ class ResourceManager2D : NSObject
         {
             var inSurf = gridLevels[i]
             var outSurf = gridLevels[i+1]
-            MultigridCycle(cmdBuffer: commandBuffer!, inSurface: &inSurf, outSurface: &outSurf)
+            MGRestrictLevel(cmdBuffer: commandBuffer!, inSurface: &inSurf, outSurface: &outSurf)
             gridLevels[i] = inSurf
             gridLevels[i+1] = outSurf
         }

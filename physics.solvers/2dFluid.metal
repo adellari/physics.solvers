@@ -202,6 +202,7 @@ kernel void GaussSeidel(texture2d<float, access::read> pressureIn [[texture(0)]]
     
 }
 
+//double check with vassvik how this is derived to see how to modify it for weighted gaussian
 kernel void Residual(texture2d<float, access::read> pressure [[texture(0)]], texture2d<float, access::sample> divergence [[texture(1)]], texture2d<float, access::write> residual [[texture(2)]], const uint2 position [[thread_position_in_grid]])
 {
     constexpr sampler divergenceSampler(filter::linear, address::clamp_to_zero);
@@ -306,6 +307,15 @@ kernel void Restrict(texture2d<float, access::sample> scaleUp [[texture(0)]], te
     float2 uv = float2((float)position.x / (float)scaleDown.get_width(), (float)position.y / (float)scaleDown.get_height());
     float residual = scaleUp.sample(textureSampler, uv).x;
     scaleDown.write(float4(residual, residual, residual, 1), position);
+}
+
+kernel void Prolongate(texture2d<float, access::sample> scaleDown [[texture(0)]], texture2d<float, access::read> upSolution [[texture(1)]], texture2d<float, access::write> scaleUp [[texture(2)]], const uint2 position [[thread_position_in_grid]])
+{
+    constexpr sampler levelSampler(filter::linear, address::clamp_to_edge);
+    float2 uv = float2((float)position.x/(float)scaleUp.get_width(), (float)position.y/(float)scaleUp.get_height());
+    float lowerLevel = scaleDown.sample(levelSampler, uv).r;
+    float upperLevel = lowerLevel + upSolution.read(position).r;
+    scaleUp.write(float4(upperLevel, upperLevel, upperLevel, 1), position);
 }
 
 kernel void ComputeError(texture2d<float, access::read> fine [[texture(0)]], texture2d<float, access::sample> coarse [[texture(1)]], texture2d<float, access::write> error [[texture(2)]], const uint2 position [[thread_position_in_grid]])
