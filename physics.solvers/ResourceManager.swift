@@ -245,7 +245,7 @@ class ResourceManager2D : NSObject
         //(calculate the residual?) at some point are we calculating the residual of residual?? - yes!
         var threadsSize = MTLSize(width: inSurface.Ping.width/32, height: inSurface.Ping.height/32, depth: 1)
         //smooth
-        for i in 0...5
+        for i in 0...50
         {
             let jacobiEncoder = cmdBuffer.makeComputeCommandEncoder()!
             jacobiEncoder.setComputePipelineState(self.jacobiPipeline)
@@ -288,6 +288,9 @@ class ResourceManager2D : NSObject
     //add the prolonged residual to the
     //new level's existing solution
     //repeat
+    
+    //Ping has the solution
+    //Pong has the solution's residual
     func MGProlongateLevel(cmdBuffer : MTLCommandBuffer, inSurface : inout Fluid.Surface, outSurface : inout Fluid.Surface)
     {
         var threadsSize = MTLSize(width: inSurface.Ping.width/32, height: inSurface.Ping.height/32, depth: 1)
@@ -295,17 +298,22 @@ class ResourceManager2D : NSObject
         let smoothEncoder = cmdBuffer.makeComputeCommandEncoder()!
         smoothEncoder.setComputePipelineState(self.jacobiPipeline)
         smoothEncoder.label = "Prolongation Smoothing"
+        //we prolong the previous level's restricted residual
         smoothEncoder.setTexture(inSurface.Ping, index: 0)
         smoothEncoder.setTexture(inSurface.Pong, index: 1)
-        //dispatch
+        smoothEncoder.setTexture(fluid.Divergence.Ping, index: 2)
+        smoothEncoder.setTexture(obstacles!, index: 3)
+        smoothEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
         smoothEncoder.endEncoding()
         
+        threadsSize = MTLSize(width: outSurface.Ping.width/32, height: outSurface.Ping.height/32, depth: 1)
         let prolongateEncoder = cmdBuffer.makeComputeCommandEncoder()!
         prolongateEncoder.setComputePipelineState(self.prolongationPipeline)
+        prolongateEncoder.label = "Prolongation"
         prolongateEncoder.setTexture(inSurface.Pong, index: 0)
-        prolongateEncoder.setTexture(outSurface.Ping, index: 1) //level up solution
-        prolongateEncoder.setTexture(outSurface.Ping, index: 2)
-        //dispatch
+        prolongateEncoder.setTexture(outSurface.Ping, index: 1) //level up current solution
+        prolongateEncoder.setTexture(outSurface.Pong, index: 2) //the output of this is
+        prolongateEncoder.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsSize)
         prolongateEncoder.endEncoding()
     }
     
@@ -393,7 +401,7 @@ class ResourceManager2D : NSObject
         Swap(surface: &fluid.Divergence)
         
          
-        for _ in 0..<20
+        for _ in 0..<10
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
@@ -420,14 +428,24 @@ class ResourceManager2D : NSObject
         residualEncoder.endEncoding()
         
         var gridLevels = [fluid.ResidualGrid.Full, fluid.ResidualGrid.Half, fluid.ResidualGrid.Quarter, fluid.ResidualGrid.Eighth, fluid.ResidualGrid.Sixteenth]
+        let levelsSize = gridLevels.count - 1
         
-        for i in 0..<gridLevels.count - 1
+        for i in 0..<levelsSize
         {
             var inSurf = gridLevels[i]
             var outSurf = gridLevels[i+1]
             MGRestrictLevel(cmdBuffer: commandBuffer!, inSurface: &inSurf, outSurface: &outSurf)
             gridLevels[i] = inSurf
             gridLevels[i+1] = outSurf
+        }
+        
+        for i in 0..<levelsSize
+        {
+            var inSurf = gridLevels[levelsSize - i]
+            var outSurf = gridLevels[levelsSize - i-1]
+            MGProlongateLevel(cmdBuffer: commandBuffer!, inSurface: &inSurf, outSurface: &outSurf)
+            gridLevels[levelsSize - i] = inSurf
+            gridLevels[levelsSize - i-1] = outSurf
         }
         /*
         var redBlack : Int = 0
@@ -482,7 +500,7 @@ class ResourceManager2D : NSObject
         encoder3.setComputePipelineState(self.poissonPipeline)
         encoder3.setTexture(fluid.Velocity.Ping, index: 0)
         encoder3.setTexture(fluid.Velocity.Pong, index: 1)
-        encoder3.setTexture(fluid.Pressure.Ping, index: 2)
+        encoder3.setTexture(fluid.ResidualGrid.Full.Pong, index: 2)
         encoder3.setTexture(obstacleTex!, index: 3)
         encoder3.dispatchThreadgroups(groupSize, threadsPerThreadgroup: threadsPerGroup)
         encoder3.label = "Poisson Correction"
