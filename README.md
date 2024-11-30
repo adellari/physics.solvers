@@ -1,4 +1,4 @@
-##An exploration of Physics Solvers applied to the Dynamics of Compressable Fluid Flow
+## An exploration of Physics Solvers applied to the Dynamics of Compressable Fluid Flow
 
 Contains algorithms for 2D fluid flow, with GPU implementations of Jacobi and Gauss Seidel Projection solvers.
 Currently focused on studying and implementing different multi-grid cycle configurations. 
