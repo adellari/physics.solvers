@@ -245,7 +245,7 @@ class ResourceManager2D : NSObject
         //(calculate the residual?) at some point are we calculating the residual of residual?? - yes!
         var threadsSize = MTLSize(width: inSurface.Ping.width/32, height: inSurface.Ping.height/32, depth: 1)
         //smooth
-        for i in 0...50
+        for i in 0...4
         {
             let jacobiEncoder = cmdBuffer.makeComputeCommandEncoder()!
             jacobiEncoder.setComputePipelineState(self.jacobiPipeline)
@@ -400,8 +400,20 @@ class ResourceManager2D : NSObject
         
         Swap(surface: &fluid.Divergence)
         
+        /*
+         Pre smooth - 1-3 jacobi
+         Residual
+         Project
+         Restrict
+         Repeat for each restriction
+         try to approximate the coarsest level (maybe 10+ iterations)
          
-        for _ in 0..<10
+        
+         
+         
+         */
+         
+        for _ in 0..<40
         {
             let _c = commandBuffer!.makeComputeCommandEncoder()!
             _c.setComputePipelineState(self.jacobiPipeline)
